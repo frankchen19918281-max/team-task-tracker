@@ -290,6 +290,20 @@
       "status": "doing",
       "priority": "normal",
       "note": ""
+    },
+    {
+      "id": "t_1794550792419",
+      "project": "王桥项目",
+      "title": "cad图纸绘制",
+      "memberId": "m2",
+      "collaborators": [],
+      "source": "assigned",
+      "startDate": "2026-11-16",
+      "endDate": "2026-11-16",
+      "hoursPerDay": 8,
+      "status": "todo",
+      "priority": "normal",
+      "note": ""
     }
   ]
 }

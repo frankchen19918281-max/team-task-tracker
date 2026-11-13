@@ -169,5 +169,23 @@
       "active": true
     }
   ],
-  "tasks": []
+  "tasks": [
+    {
+      "id": "t_1794540405954",
+      "project": "雅尼项目",
+      "title": "文本编制",
+      "memberId": "m1",
+      "collaborators": [
+        "m3",
+        "m4"
+      ],
+      "source": "self",
+      "startDate": "2026-11-13",
+      "endDate": "2026-11-13",
+      "hoursPerDay": 8,
+      "status": "doing",
+      "priority": "normal",
+      "note": ""
+    }
+  ]
 }

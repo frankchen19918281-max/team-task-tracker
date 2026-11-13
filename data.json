@@ -27,7 +27,7 @@
     {
       "id": "m1",
       "name": "CJ",
-      "role": "项目总负责 / 统筹",
+      "role": "项目负责",
       "capacity": 8,
       "color": "indigo",
       "isBoss": true,

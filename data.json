@@ -5,7 +5,28 @@
   "startDate": "2026-11-12",
   "daysToShow": 10,
   "safeLock": false,
-  "trash": [],
+  "trash": [
+    {
+      "trashType": "task",
+      "deletedAt": "2026/11/13 11:16:13",
+      "data": {
+        "id": "t1",
+        "memberId": "m1",
+        "collaborators": [
+          "m4"
+        ],
+        "project": "大客户B专项",
+        "title": "制定部门重点计划 & 客户合同终审",
+        "startDate": "2026-11-13",
+        "endDate": "2026-11-14",
+        "hoursPerDay": 3,
+        "status": "doing",
+        "source": "self",
+        "priority": "high",
+        "note": "带小张一起对接客户B"
+      }
+    }
+  ],
   "projectOptions": [
     "重点项目A",
     "大客户B专项",
@@ -62,22 +83,6 @@
     }
   ],
   "tasks": [
-    {
-      "id": "t1",
-      "memberId": "m1",
-      "collaborators": [
-        "m4"
-      ],
-      "project": "大客户B专项",
-      "title": "制定部门重点计划 & 客户合同终审",
-      "startDate": "2026-11-13",
-      "endDate": "2026-11-14",
-      "hoursPerDay": 3,
-      "status": "doing",
-      "source": "self",
-      "priority": "high",
-      "note": "带小张一起对接客户B"
-    },
     {
       "id": "t3",
       "memberId": "m2",

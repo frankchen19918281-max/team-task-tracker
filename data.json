@@ -36,7 +36,7 @@
     {
       "id": "m2",
       "name": "WMZ",
-      "role": "项目成员 · 方案执行",
+      "role": "项目成员",
       "capacity": 8,
       "color": "emerald",
       "isBoss": false,
@@ -45,7 +45,7 @@
     {
       "id": "m3",
       "name": "YZ",
-      "role": "项目成员 · 技术落地",
+      "role": "项目成员",
       "capacity": 8,
       "color": "blue",
       "isBoss": false,
@@ -54,7 +54,7 @@
     {
       "id": "m4",
       "name": "HG",
-      "role": "项目成员 · 运营对接",
+      "role": "项目成员",
       "capacity": 8,
       "color": "amber",
       "isBoss": false,

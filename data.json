@@ -8,6 +8,26 @@
   "trash": [
     {
       "trashType": "task",
+      "deletedAt": "2026/11/13 11:16:19",
+      "data": {
+        "id": "t6",
+        "memberId": "m3",
+        "collaborators": [
+          "m2"
+        ],
+        "project": "重点项目A",
+        "title": "搭建内部数据统计自动化报表",
+        "startDate": "2026-11-12",
+        "endDate": "2026-11-15",
+        "hoursPerDay": 6,
+        "status": "doing",
+        "source": "assigned",
+        "priority": "high",
+        "note": "小李主负责，小王配合核对字段"
+      }
+    },
+    {
+      "trashType": "task",
       "deletedAt": "2026/11/13 11:16:17",
       "data": {
         "id": "t3",
@@ -114,22 +134,6 @@
       "source": "self",
       "priority": "normal",
       "note": "成员自建：市场部临时找过来帮忙"
-    },
-    {
-      "id": "t6",
-      "memberId": "m3",
-      "collaborators": [
-        "m2"
-      ],
-      "project": "重点项目A",
-      "title": "搭建内部数据统计自动化报表",
-      "startDate": "2026-11-12",
-      "endDate": "2026-11-15",
-      "hoursPerDay": 6,
-      "status": "doing",
-      "source": "assigned",
-      "priority": "high",
-      "note": "小李主负责，小王配合核对字段"
     },
     {
       "id": "t7",

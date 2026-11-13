@@ -126,7 +126,9 @@
     "包头三北项目-赛罕塔拉片区",
     "雅尼项目"
   ],
-  "workContentOptions": [],
+  "workContentOptions": [
+    "文本编制"
+  ],
   "members": [
     {
       "id": "m1",

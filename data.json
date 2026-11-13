@@ -194,7 +194,9 @@
       "project": "雅尼项目",
       "title": "消落带，汇口图纸",
       "memberId": "m3",
-      "collaborators": [],
+      "collaborators": [
+        "m1"
+      ],
       "source": "assigned",
       "startDate": "2026-11-16",
       "endDate": "2026-11-20",

@@ -275,6 +275,20 @@
       "status": "todo",
       "priority": "normal",
       "note": ""
+    },
+    {
+      "id": "t_1794550723707",
+      "project": "沉湖下红星垸鸟类栖息地修复项目",
+      "title": "cad图纸绘制",
+      "memberId": "m2",
+      "collaborators": [],
+      "source": "assigned",
+      "startDate": "2026-11-13",
+      "endDate": "2026-11-13",
+      "hoursPerDay": 2,
+      "status": "doing",
+      "priority": "normal",
+      "note": ""
     }
   ]
 }

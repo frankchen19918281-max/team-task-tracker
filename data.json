@@ -8,6 +8,24 @@
   "trash": [
     {
       "trashType": "task",
+      "deletedAt": "2026/11/13 11:16:23",
+      "data": {
+        "id": "t7",
+        "memberId": "m3",
+        "collaborators": [],
+        "project": "内部系统升级",
+        "title": "系统接口权限申请与联调",
+        "startDate": "2026-11-13",
+        "endDate": "2026-11-14",
+        "hoursPerDay": 1.5,
+        "status": "blocked",
+        "source": "self",
+        "priority": "high",
+        "note": "⚠️ 卡点：运维部门一直没批权限，需要负责人帮忙催一下"
+      }
+    },
+    {
+      "trashType": "task",
       "deletedAt": "2026/11/13 11:16:21",
       "data": {
         "id": "t4",
@@ -139,20 +157,6 @@
     }
   ],
   "tasks": [
-    {
-      "id": "t7",
-      "memberId": "m3",
-      "collaborators": [],
-      "project": "内部系统升级",
-      "title": "系统接口权限申请与联调",
-      "startDate": "2026-11-13",
-      "endDate": "2026-11-14",
-      "hoursPerDay": 1.5,
-      "status": "blocked",
-      "source": "self",
-      "priority": "high",
-      "note": "⚠️ 卡点：运维部门一直没批权限，需要负责人帮忙催一下"
-    },
     {
       "id": "t8",
       "memberId": "m4",

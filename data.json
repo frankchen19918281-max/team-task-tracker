@@ -8,6 +8,24 @@
   "trash": [
     {
       "trashType": "task",
+      "deletedAt": "2026/11/13 11:16:21",
+      "data": {
+        "id": "t4",
+        "memberId": "m2",
+        "collaborators": [],
+        "project": "日常运营维护",
+        "title": "协助修改宣传物料文案",
+        "startDate": "2026-11-13",
+        "endDate": "2026-11-13",
+        "hoursPerDay": 4,
+        "status": "doing",
+        "source": "self",
+        "priority": "normal",
+        "note": "成员自建：市场部临时找过来帮忙"
+      }
+    },
+    {
+      "trashType": "task",
       "deletedAt": "2026/11/13 11:16:19",
       "data": {
         "id": "t6",
@@ -121,20 +139,6 @@
     }
   ],
   "tasks": [
-    {
-      "id": "t4",
-      "memberId": "m2",
-      "collaborators": [],
-      "project": "日常运营维护",
-      "title": "协助修改宣传物料文案",
-      "startDate": "2026-11-13",
-      "endDate": "2026-11-13",
-      "hoursPerDay": 4,
-      "status": "doing",
-      "source": "self",
-      "priority": "normal",
-      "note": "成员自建：市场部临时找过来帮忙"
-    },
     {
       "id": "t7",
       "memberId": "m3",

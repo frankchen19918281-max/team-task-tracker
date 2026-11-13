@@ -8,6 +8,24 @@
   "trash": [
     {
       "trashType": "task",
+      "deletedAt": "2026/11/13 11:16:25",
+      "data": {
+        "id": "t8",
+        "memberId": "m4",
+        "collaborators": [],
+        "project": "日常运营维护",
+        "title": "日常客户群答疑与周报汇总",
+        "startDate": "2026-11-13",
+        "endDate": "2026-11-17",
+        "hoursPerDay": 2.5,
+        "status": "doing",
+        "source": "self",
+        "priority": "normal",
+        "note": "每天固定例行工作"
+      }
+    },
+    {
+      "trashType": "task",
       "deletedAt": "2026/11/13 11:16:23",
       "data": {
         "id": "t7",
@@ -156,20 +174,5 @@
       "active": true
     }
   ],
-  "tasks": [
-    {
-      "id": "t8",
-      "memberId": "m4",
-      "collaborators": [],
-      "project": "日常运营维护",
-      "title": "日常客户群答疑与周报汇总",
-      "startDate": "2026-11-13",
-      "endDate": "2026-11-17",
-      "hoursPerDay": 2.5,
-      "status": "doing",
-      "source": "self",
-      "priority": "normal",
-      "note": "每天固定例行工作"
-    }
-  ]
+  "tasks": []
 }

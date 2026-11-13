@@ -1,0 +1,2708 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>团队排期与工时看板 - TeamPulse</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background-color: #f8fafc;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+    .cell-hover:hover .add-btn-hint {
+      opacity: 1;
+    }
+    .edit-hint-icon {
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+    .member-card-hover:hover .edit-hint-icon {
+      opacity: 1;
+    }
+    /* When exporting image, hide interactive hints & expand full table cleanly */
+    .exporting-snapshot .no-export,
+    .exporting-snapshot .add-btn-hint,
+    .exporting-snapshot .edit-hint-icon {
+      display: none !important;
+    }
+    .exporting-snapshot #exportReportHeader {
+      display: flex !important;
+    }
+    .exporting-snapshot .overflow-x-auto {
+      overflow: visible !important;
+    }
+  </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+  <!-- ================= PASSWORD LOCK OVERLAY (访问密码: 2026) ================= -->
+  <div id="authLockScreen" class="fixed inset-0 bg-slate-900 z-[100] flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-7 shadow-2xl border border-slate-200 text-center space-y-5">
+      <div class="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center mx-auto shadow-lg shadow-indigo-500/30 text-2xl">
+        <i class="fa-solid fa-user-lock"></i>
+      </div>
+      <div>
+        <h2 class="text-lg font-bold text-slate-900">团队排期与负荷看板</h2>
+        <p class="text-xs text-slate-500 mt-1">内部工作安排系统，请输入访问口令进入</p>
+      </div>
+      <form onsubmit="verifyAccessPasscode(event)" class="space-y-3.5">
+        <div>
+          <input type="password" id="passcodeField" placeholder="请输入打开密码" required autofocus
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-center text-base font-bold tracking-widest focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition">
+          <p id="passcodeErrorMsg" class="hidden text-xs text-rose-600 font-medium mt-1.5">
+            <i class="fa-solid fa-circle-exclamation mr-1"></i>密码不正确，请重新输入
+          </p>
+        </div>
+        <button type="submit" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm shadow-indigo-200 transition cursor-pointer">
+          解锁进入系统
+        </button>
+      </form>
+      <div class="text-[11px] text-slate-400">
+        🔒 验证通过后在当前浏览器会话内保持解锁
+      </div>
+    </div>
+  </div>
+
+  <!-- Top Navigation Bar -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+      <!-- Left: Brand & Identity Switcher -->
+      <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-sm shadow-indigo-200">
+            <i class="fa-solid fa-calendar-check text-lg"></i>
+          </div>
+          <div>
+            <h1 class="font-bold text-slate-900 text-base leading-tight flex items-center gap-2">
+              团队排期与负荷看板
+              <span class="text-xs font-normal px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200 flex items-center gap-1">
+                <i class="fa-solid fa-shield-halved text-[10px]"></i> 防误删保护中
+              </span>
+            </h1>
+            <p class="text-xs text-slate-400 hidden sm:block">实时掌握负责人与项目成员的时间安排及任务量</p>
+          </div>
+        </div>
+
+        <div class="h-6 w-px bg-slate-200 hidden xl:block mx-1"></div>
+
+        <!-- Current Operating User -->
+        <div class="hidden xl:flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200/80">
+          <span class="text-xs text-slate-500">当前视角:</span>
+          <select id="currentActorSelect" onchange="handleActorChange(this.value)" class="bg-transparent text-xs font-semibold text-slate-800 focus:outline-none cursor-pointer">
+            <!-- Populated by JS -->
+          </select>
+        </div>
+      </div>
+
+      <!-- Center: View Switcher -->
+      <div class="flex bg-slate-100 p-1 rounded-xl border border-slate-200/70">
+        <button id="tabMatrix" onclick="switchView('matrix')" class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 bg-white text-indigo-600 shadow-sm cursor-pointer">
+          <i class="fa-solid fa-table-cells"></i>
+          <span>团队时间轴</span>
+        </button>
+        <button id="tabPersonal" onclick="switchView('personal')" class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 text-slate-600 hover:text-slate-900 cursor-pointer">
+          <i class="fa-solid fa-list-check"></i>
+          <span>个人清单</span>
+        </button>
+      </div>
+
+      <!-- Right: Quick Actions + Cloud Sync + Export Image + Trash Bin + Safe Lock -->
+      <div class="flex items-center gap-2">
+        <!-- GitHub Cloud Sync Button -->
+        <button id="cloudSyncStatusBtn" onclick="openCloudSyncModal()"
+          class="px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition shadow-xs cursor-pointer"
+          title="配置 GitHub 仓库云端同步，实现团队多人跨电脑/手机实时同步">
+          <i class="fa-solid fa-cloud text-slate-400"></i>
+          <span>云同步:未配</span>
+        </button>
+
+        <!-- Export Image for Boss Button -->
+        <button id="exportImgBtn" onclick="exportScheduleAsImage()"
+          class="px-3 py-2 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition shadow-xs cursor-pointer"
+          title="将当前完整的排期表与负荷情况生成高清长图，方便直接发微信向领导汇报">
+          <i class="fa-solid fa-camera-retro"></i>
+          <span>生成汇报图片</span>
+        </button>
+
+        <!-- Safe Delete Lock Toggle -->
+        <button id="safeLockBtn" onclick="toggleSafeLock()"
+          class="px-2.5 py-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+          title="开启后将锁定删除操作，防止手滑误删">
+        </button>
+
+        <!-- Recycle Bin (回收站) -->
+        <button onclick="openTrashModal()" class="px-2.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium flex items-center gap-1.5 transition shadow-xs cursor-pointer" title="查看并恢复误删的任务或人员">
+          <i class="fa-solid fa-trash-can-arrow-up text-slate-500"></i>
+          <span class="hidden md:inline">回收站</span>
+          <span id="trashCountBadge" class="px-1.5 py-0.2 bg-slate-100 text-slate-600 rounded-full text-xs font-semibold">0</span>
+        </button>
+
+        <button onclick="openDictModal()" class="px-2.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium flex items-center gap-1.5 transition shadow-xs cursor-pointer" title="预先录入常用的项目名称和工作内容">
+          <i class="fa-solid fa-folder-plus text-indigo-600"></i>
+          <span class="hidden lg:inline">项目/内容库</span>
+        </button>
+
+        <button onclick="openMemberModal()" class="px-2.5 py-2 rounded-xl border border-indigo-200 bg-indigo-50/60 hover:bg-indigo-100/80 text-indigo-700 text-xs font-semibold flex items-center gap-1.5 transition shadow-xs cursor-pointer">
+          <i class="fa-solid fa-user-pen"></i>
+          <span class="hidden lg:inline">改负责人/成员</span>
+          <span id="memberCountBadge" class="px-1.5 py-0.2 bg-indigo-600 text-white rounded-full text-xs font-semibold">4</span>
+        </button>
+
+        <button onclick="openTaskModal()" class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-medium flex items-center gap-1.5 transition shadow-sm shadow-indigo-200 cursor-pointer">
+          <i class="fa-solid fa-plus"></i>
+          <span>记任务</span>
+        </button>
+
+        <button onclick="lockSystemNow()" class="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-500 text-xs transition cursor-pointer" title="立即锁定屏幕（需重新输入密码 2026）">
+          <i class="fa-solid fa-power-off"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container (Capture Area for Exporting Image) -->
+  <main id="captureReportArea" class="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 py-5 flex flex-col gap-5 bg-[#f8fafc]">
+
+    <!-- Dedicated Report Banner (Only visible when generating image for leadership) -->
+    <div id="exportReportHeader" class="hidden bg-indigo-600 text-white p-5 rounded-2xl shadow-sm items-center justify-between">
+      <div class="flex items-center gap-3.5">
+        <div class="w-12 h-12 rounded-xl bg-white/15 flex items-center justify-center text-white text-2xl">
+          <i class="fa-solid fa-chart-gantt"></i>
+        </div>
+        <div>
+          <h2 class="text-xl font-bold tracking-tight">团队工作排期与任务负荷汇报表</h2>
+          <p id="exportReportSubTitle" class="text-xs text-indigo-100 mt-1">统计周期：-- | 生成时间：--</p>
+        </div>
+      </div>
+      <div class="text-right text-xs text-indigo-100 space-y-1">
+        <div class="font-semibold text-white text-sm">负荷图例说明</div>
+        <div>🟢 轻松(&lt;6h/天) · 🟡 饱和(6~8h/天) · 🔴 超载(&gt;8h/天)</div>
+      </div>
+    </div>
+
+    <!-- Top Summary Cards & Filter Bar -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+      <!-- KPI Summary Cards -->
+      <div class="lg:col-span-7 grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div onclick="openMemberModal()" class="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs flex items-center gap-3 cursor-pointer hover:border-indigo-300 transition" title="点击修改负责人与项目成员名单">
+          <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+            <i class="fa-solid fa-user-group"></i>
+          </div>
+          <div>
+            <div class="text-xs text-slate-400 flex items-center gap-1">在岗人数 <i class="fa-solid fa-pen text-[10px] text-indigo-500 no-export"></i></div>
+            <div class="text-lg font-bold text-slate-800" id="statActiveMembers">4人</div>
+          </div>
+        </div>
+
+        <div class="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+            <i class="fa-solid fa-mug-hot"></i>
+          </div>
+          <div>
+            <div class="text-xs text-slate-400">今日可派活(空闲)</div>
+            <div class="text-lg font-bold text-emerald-600" id="statAvailableToday">2人</div>
+          </div>
+        </div>
+
+        <div class="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+            <i class="fa-solid fa-fire"></i>
+          </div>
+          <div>
+            <div class="text-xs text-slate-400">今日超负荷预警</div>
+            <div class="text-lg font-bold text-rose-600" id="statOverloadToday">1人</div>
+          </div>
+        </div>
+
+        <div class="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+          </div>
+          <div>
+            <div class="text-xs text-slate-400">卡点/待协调任务</div>
+            <div class="text-lg font-bold text-amber-600" id="statBlockedTasks">1项</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Controls: Date Range & Filters -->
+      <div class="lg:col-span-5 bg-white p-3 rounded-xl border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-1.5">
+          <button onclick="shiftDateRange(-7)" class="no-export p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs cursor-pointer" title="前一周">
+            <i class="fa-solid fa-chevron-left"></i>
+          </button>
+          <button onclick="resetDateToToday()" class="no-export px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-xs font-medium text-slate-700 cursor-pointer">
+            今天
+          </button>
+          <button onclick="shiftDateRange(7)" class="no-export p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs cursor-pointer" title="后一周">
+            <i class="fa-solid fa-chevron-right"></i>
+          </button>
+          <span class="text-xs text-slate-400">排期范围:</span>
+          <span id="dateRangeLabel" class="text-xs font-bold text-indigo-700 ml-0.5">11月13日 - 11月22日</span>
+        </div>
+
+        <div class="flex items-center gap-2 no-export">
+          <label class="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200/60">
+            <input type="checkbox" id="filterFreeOnly" onchange="renderAll()" class="rounded text-indigo-600 focus:ring-indigo-500">
+            <span>仅看今日未满载</span>
+          </label>
+          <select id="daysCountSelect" onchange="handleDaysCountChange(this.value)" class="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-slate-700 focus:outline-none">
+            <option value="7">显示 7 天</option>
+            <option value="10" selected>显示 10 天</option>
+            <option value="14">显示 14 天</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW 1: Team Resource Matrix View -->
+    <section id="viewMatrix" class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex flex-col">
+      <div class="px-4 py-2.5 bg-slate-50/80 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
+        <div class="flex flex-wrap items-center gap-4">
+          <span class="font-medium text-slate-700">
+            <i class="fa-solid fa-camera text-emerald-600 mr-1"></i>提示：点击右上角绿色<b>【生成汇报图片】</b>按钮，可将完整排期表一键保存为高清图片发给领导。
+          </span>
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+          <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> 轻松(&lt;6h)</span>
+          <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span> 饱和(6~8h)</span>
+          <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span> 超载(&gt;8h)</span>
+        </div>
+      </div>
+
+      <!-- Scrollable Matrix Table -->
+      <div id="matrixScrollWrapper" class="overflow-x-auto">
+        <table id="matrixTableElement" class="w-full border-collapse min-w-[980px]">
+          <thead>
+            <tr id="matrixHeaderRow" class="bg-slate-50/60 border-b border-slate-200 text-left">
+              <!-- Populated by JS -->
+            </tr>
+          </thead>
+          <tbody id="matrixBody" class="divide-y divide-slate-200 text-sm">
+            <!-- Populated by JS -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- VIEW 2: Personal Kanban & Task List View -->
+    <section id="viewPersonal" class="hidden flex-col gap-4">
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-2 flex-wrap" id="personalMemberTabs">
+          <!-- Populated by JS -->
+        </div>
+        <div class="flex items-center gap-2 text-xs text-slate-500 no-export">
+          <span>状态筛选：</span>
+          <select id="personalStatusFilter" onchange="renderPersonalView()" class="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-700">
+            <option value="all">全部状态</option>
+            <option value="active">未完成 (待办+进行中+卡点)</option>
+            <option value="blocked">仅看卡点/求助</option>
+            <option value="done">已完成</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="personalKanbanBoard">
+        <!-- Populated by JS -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Floating Undo Toast Notification -->
+  <div id="undoToast" class="fixed bottom-5 right-5 z-50 hidden items-center gap-3 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg border border-slate-700 text-xs">
+    <i class="fa-solid fa-circle-info text-amber-400 text-sm"></i>
+    <span id="undoToastMsg">已移入回收站</span>
+    <button onclick="undoLastDelete()" class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold cursor-pointer">
+      立即撤销恢复
+    </button>
+    <button onclick="hideUndoToast()" class="text-slate-400 hover:text-white ml-1 cursor-pointer">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  </div>
+
+  <!-- Footer Info -->
+  <footer class="max-w-[1600px] w-full mx-auto px-4 sm:px-6 py-4 text-center text-xs text-slate-400 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200/60 mt-auto">
+    <div>🛡️ 防丢保护：所有修改自动存本地，删除项自动进【回收站】，建议定期导出备份文件。</div>
+    <div class="flex items-center gap-3">
+      <button onclick="exportScheduleAsImage()" class="text-emerald-600 font-semibold hover:underline cursor-pointer">📸 导出排期长图发领导</button>
+      <span>·</span>
+      <button onclick="exportDataJson()" class="hover:text-indigo-600 underline cursor-pointer">导出备份数据 (JSON)</button>
+      <span>·</span>
+      <label class="hover:text-indigo-600 underline cursor-pointer">
+        导入恢复备份
+        <input type="file" accept=".json" onchange="importDataJson(event)" class="hidden">
+      </label>
+      <span>·</span>
+      <button onclick="resetDemoData()" class="hover:text-rose-600 underline cursor-pointer">重置为初始演示数据</button>
+    </div>
+  </footer>
+
+  <!-- ================= MODAL 1: ADD / EDIT TASK ================= -->
+  <div id="taskModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full shadow-xl border border-slate-200 overflow-hidden animate-fade-in">
+      <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+        <h3 id="taskModalTitle" class="font-bold text-slate-800 text-base flex items-center gap-2">
+          <i class="fa-solid fa-layer-group text-indigo-600"></i>
+          <span>记录 / 派发任务</span>
+        </h3>
+        <button onclick="closeTaskModal()" class="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <form id="taskForm" onsubmit="saveTaskForm(event)" class="p-6 space-y-4 text-sm max-h-[82vh] overflow-y-auto">
+        <input type="hidden" id="taskIdInput">
+
+        <!-- 1. 项目名称 -->
+        <div class="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/90 space-y-2">
+          <div class="flex items-center justify-between">
+            <label class="block text-xs font-bold text-slate-800">
+              1. 项目名称 <span class="text-rose-500">*</span>
+            </label>
+            <button type="button" onclick="toggleQuickAddProject()" class="text-xs text-indigo-600 hover:text-indigo-700 font-semibold flex items-center gap-1 cursor-pointer">
+              <i class="fa-solid fa-plus-circle"></i> 录入新项目名称
+            </button>
+          </div>
+
+          <select id="taskProjectSelect" required class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:border-indigo-500 outline-none bg-white font-medium text-slate-800 cursor-pointer">
+          </select>
+
+          <div id="quickAddProjectBox" class="hidden pt-1 flex items-center gap-2">
+            <input type="text" id="newProjectNameInput" placeholder="输入新项目名称，回车或点添加即可选上..."
+              onkeydown="if(event.key==='Enter'){event.preventDefault();confirmQuickAddProject();}"
+              class="flex-1 px-3 py-1.5 rounded-lg border border-indigo-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-200">
+            <button type="button" onclick="confirmQuickAddProject()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shrink-0 cursor-pointer">
+              添加并选中
+            </button>
+          </div>
+        </div>
+
+        <!-- 2. 工作内容 -->
+        <div class="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/90 space-y-2">
+          <div class="flex items-center justify-between">
+            <label class="block text-xs font-bold text-slate-800">
+              2. 工作内容 <span class="text-rose-500">*</span>
+            </label>
+            <button type="button" onclick="toggleQuickAddWorkItem()" class="text-xs text-indigo-600 hover:text-indigo-700 font-semibold flex items-center gap-1 cursor-pointer">
+              <i class="fa-solid fa-plus-circle"></i> 录入新工作内容
+            </button>
+          </div>
+
+          <select id="taskTitleSelect" required class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:border-indigo-500 outline-none bg-white font-medium text-slate-800 cursor-pointer">
+          </select>
+
+          <div id="quickAddWorkItemBox" class="hidden pt-1 flex items-center gap-2">
+            <input type="text" id="newWorkItemNameInput" placeholder="输入新的工作内容，回车或点添加即可选上..."
+              onkeydown="if(event.key==='Enter'){event.preventDefault();confirmQuickAddWorkItem();}"
+              class="flex-1 px-3 py-1.5 rounded-lg border border-indigo-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-200">
+            <button type="button" onclick="confirmQuickAddWorkItem()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shrink-0 cursor-pointer">
+              添加并选中
+            </button>
+          </div>
+        </div>
+
+        <!-- Primary Owner & Collaborators -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-indigo-50/40 p-3.5 rounded-xl border border-indigo-100">
+          <div>
+            <label class="block text-xs font-bold text-indigo-900 mb-1">
+              <i class="fa-solid fa-user-check mr-1 text-indigo-600"></i>负责人 <span class="text-rose-500">*</span>
+            </label>
+            <select id="taskAssigneeInput" required onchange="renderCollaboratorCheckboxes()" class="w-full px-3 py-2 rounded-xl border border-indigo-200 focus:border-indigo-500 outline-none bg-white font-semibold text-slate-800 cursor-pointer">
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">任务来源</label>
+            <select id="taskSourceInput" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:border-indigo-500 outline-none bg-white cursor-pointer">
+              <option value="assigned">🎯 负责人指派 (主线任务)</option>
+              <option value="self">📝 成员自建 (日常/临时活)</option>
+            </select>
+          </div>
+
+          <div class="sm:col-span-2 pt-2 border-t border-indigo-100/80">
+            <label class="block text-xs font-semibold text-slate-700 mb-1.5">
+              <i class="fa-solid fa-users mr-1 text-slate-500"></i>协助的项目成员（可多选，勾选后同步计入对方日程）：
+            </label>
+            <div id="collaboratorCheckboxes" class="flex flex-wrap gap-2">
+            </div>
+          </div>
+        </div>
+
+        <!-- Start Date, End Date -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">开始日期 <span class="text-rose-500">*</span></label>
+            <input type="date" id="taskStartInput" required onchange="updateWorkloadPreview()"
+              class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:border-indigo-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">结束日期 <span class="text-rose-500">*</span></label>
+            <input type="date" id="taskEndInput" required onchange="updateWorkloadPreview()"
+              class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:border-indigo-500 outline-none">
+          </div>
+        </div>
+
+        <!-- Daily Workload Estimation & Priority -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-3.5 rounded-xl border border-slate-200/80">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">
+              预计每天投入工时 (小时/天) <span class="text-rose-500">*</span>
+            </label>
+            <div class="flex items-center gap-2">
+              <input type="number" id="taskHoursPerDayInput" min="0.5" max="16" step="0.5" value="2" required oninput="updateWorkloadPreview()"
+                class="w-20 px-2.5 py-1.5 rounded-lg border border-slate-300 focus:border-indigo-500 outline-none font-semibold text-indigo-600">
+              <div class="flex gap-1 flex-wrap">
+                <button type="button" onclick="setQuickHours(1)" class="px-2 py-1 text-xs rounded bg-white border border-slate-200 hover:bg-slate-100 cursor-pointer">1h</button>
+                <button type="button" onclick="setQuickHours(2)" class="px-2 py-1 text-xs rounded bg-white border border-slate-200 hover:bg-slate-100 cursor-pointer">2h</button>
+                <button type="button" onclick="setQuickHours(4)" class="px-2 py-1 text-xs rounded bg-white border border-slate-200 hover:bg-slate-100 cursor-pointer">4h</button>
+                <button type="button" onclick="setQuickHours(8)" class="px-2 py-1 text-xs rounded bg-white border border-slate-200 hover:bg-slate-100 cursor-pointer">8h</button>
+              </div>
+            </div>
+            <p id="workloadPreviewText" class="text-[11px] text-slate-500 mt-1.5">跨度 1 天，累计总投入约 2 小时</p>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">当前状态 / 进度</label>
+            <select id="taskStatusInput" class="w-full px-3 py-1.5 rounded-lg border border-slate-300 focus:border-indigo-500 outline-none bg-white cursor-pointer">
+              <option value="todo">⏳ 待开始</option>
+              <option value="doing">🚀 进行中</option>
+              <option value="blocked">⚠️ 卡点/等待协调 (标红提醒)</option>
+              <option value="done">✅ 已完成 (不再占用负荷)</option>
+            </select>
+            <div class="mt-2 flex items-center gap-2">
+              <label class="text-xs text-slate-600">优先级:</label>
+              <select id="taskPriorityInput" class="text-xs px-2 py-1 rounded border border-slate-200 bg-white cursor-pointer">
+                <option value="high">🔴 紧急重要</option>
+                <option value="normal" selected>🔵 普通正常</option>
+                <option value="low">⚪ 低优/可顺延</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Note -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">补充说明 / 卡点原因 (选填)</label>
+          <textarea id="taskNoteInput" rows="2" placeholder="选填：写明具体交付细节，或遇到什么困难需要协调..."
+            class="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:border-indigo-500 outline-none text-xs"></textarea>
+        </div>
+
+        <!-- Actions (2-Step Safe Delete Button) -->
+        <div class="pt-2 flex items-center justify-between border-t border-slate-100">
+          <button type="button" id="deleteTaskBtn" onclick="handleSafeDeleteTaskClick()"
+            class="hidden px-3 py-2 rounded-xl text-rose-600 hover:bg-rose-50 text-xs font-semibold flex items-center gap-1 cursor-pointer transition">
+            <i class="fa-regular fa-trash-can"></i> <span>移入回收站</span>
+          </button>
+          <div class="flex items-center gap-2 ml-auto">
+            <button type="button" onclick="closeTaskModal()" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-medium cursor-pointer">
+              取消
+            </button>
+            <button type="submit" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm shadow-indigo-200 cursor-pointer">
+              保存排期
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= MODAL 2: DIRECT INLINE EDIT FOR BOSS & PROJECT MEMBERS ================= -->
+  <div id="memberModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-2xl w-full shadow-xl border border-slate-200 overflow-hidden">
+      <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+        <div>
+          <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+            <i class="fa-solid fa-user-pen text-indigo-600"></i>
+            <span>直接修改负责人 & 项目成员名单</span>
+          </h3>
+          <p class="text-xs text-slate-500 mt-0.5">直接在输入框里改名字、改岗位、切换【负责人/项目成员】身份，改完自动生效</p>
+        </div>
+        <button onclick="closeMemberModal()" class="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+        <div class="space-y-2.5">
+          <div class="grid grid-cols-12 gap-2 px-3 text-[11px] font-bold text-slate-400 uppercase">
+            <div class="col-span-3">姓名 (直接输入修改)</div>
+            <div class="col-span-3">角色 / 分工</div>
+            <div class="col-span-2">身份类型</div>
+            <div class="col-span-2 text-center">每日标准工时</div>
+            <div class="col-span-2 text-right">状态 / 防误删</div>
+          </div>
+          <div id="memberListContainer" class="space-y-2">
+          </div>
+        </div>
+
+        <!-- Add New Member Form -->
+        <form onsubmit="addNewMember(event)" class="bg-indigo-50/60 p-4 rounded-xl border border-indigo-100 space-y-3">
+          <div class="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
+            <i class="fa-solid fa-user-plus"></i> 新增项目成员 / 手下（超过3人可无限添加）
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+            <input type="text" id="newMemberName" required placeholder="输入姓名 (如: 小赵)"
+              class="sm:col-span-3 px-3 py-1.5 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none focus:border-indigo-500">
+            <input type="text" id="newMemberRole" placeholder="岗位/分工 (如: 设计师)"
+              class="sm:col-span-4 px-3 py-1.5 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none focus:border-indigo-500">
+            <select id="newMemberIdentity" class="sm:col-span-2 px-2 py-1.5 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none">
+              <option value="member" selected>项目成员</option>
+              <option value="boss">负责人/主管</option>
+            </select>
+            <div class="sm:col-span-1 flex items-center bg-white rounded-lg border border-slate-300 px-1.5">
+              <input type="number" id="newMemberCapacity" value="8" min="1" max="16" required
+                class="w-full text-xs py-1.5 focus:outline-none text-center font-semibold" title="每日标准工时上限">
+            </div>
+            <button type="submit" class="sm:col-span-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold cursor-pointer">
+              + 立即添加
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div class="px-6 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+        <span class="text-xs text-emerald-600 font-medium"><i class="fa-solid fa-circle-check mr-1"></i>所有修改已实时自动保存（删除人员会进入回收站）</span>
+        <button onclick="closeMemberModal()" class="px-5 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 cursor-pointer">
+          完成并关闭
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL 3: PROJECT NAMES & WORK CONTENTS DICTIONARY MANAGER ================= -->
+  <div id="dictModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-3xl w-full shadow-xl border border-slate-200 overflow-hidden">
+      <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+        <div>
+          <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+            <i class="fa-solid fa-folder-plus text-indigo-600"></i>
+            <span>管理【项目名称】与【工作内容】下拉选项库</span>
+          </h3>
+          <p class="text-xs text-slate-500 mt-0.5">已被任务使用中的项目或工作内容受防误删保护，避免误删正在排期的选项</p>
+        </div>
+        <button onclick="closeDictModal()" class="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[75vh] overflow-y-auto">
+        <!-- Left Column: Project Names -->
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col gap-3">
+          <div class="font-bold text-xs text-slate-800 flex items-center justify-between">
+            <span><i class="fa-solid fa-briefcase text-indigo-600 mr-1.5"></i>1. 项目名称列表</span>
+            <span id="projectOptionCount" class="text-[11px] text-slate-400 font-normal"></span>
+          </div>
+
+          <form onsubmit="addDictProject(event)" class="flex gap-2">
+            <input type="text" id="dictNewProjectInput" required placeholder="输入新项目名称..."
+              class="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none focus:border-indigo-500">
+            <button type="submit" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shrink-0 cursor-pointer">
+              + 录入项目
+            </button>
+          </form>
+
+          <div id="dictProjectList" class="space-y-1.5 max-h-[320px] overflow-y-auto pr-1">
+          </div>
+        </div>
+
+        <!-- Right Column: Work Contents -->
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col gap-3">
+          <div class="font-bold text-xs text-slate-800 flex items-center justify-between">
+            <span><i class="fa-solid fa-list-check text-emerald-600 mr-1.5"></i>2. 工作内容列表</span>
+            <span id="workContentOptionCount" class="text-[11px] text-slate-400 font-normal"></span>
+          </div>
+
+          <form onsubmit="addDictWorkContent(event)" class="flex gap-2">
+            <input type="text" id="dictNewWorkContentInput" required placeholder="输入常用工作内容..."
+              class="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none focus:border-indigo-500">
+            <button type="submit" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shrink-0 cursor-pointer">
+              + 录入工作内容
+            </button>
+          </form>
+
+          <div id="dictWorkContentList" class="space-y-1.5 max-h-[320px] overflow-y-auto pr-1">
+          </div>
+        </div>
+      </div>
+
+      <div class="px-6 py-3 bg-slate-50 border-t border-slate-200 flex justify-end">
+        <button onclick="closeDictModal()" class="px-5 py-1.5 rounded-xl bg-slate-800 text-white text-xs font-semibold hover:bg-slate-700 cursor-pointer">
+          完成返回
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL 4: RECYCLE BIN ================= -->
+  <div id="trashModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-2xl w-full shadow-xl border border-slate-200 overflow-hidden">
+      <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+        <div>
+          <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+            <i class="fa-solid fa-trash-can-arrow-up text-indigo-600"></i>
+            <span>防误删回收站（支持随时一键恢复）</span>
+          </h3>
+          <p class="text-xs text-slate-500 mt-0.5">所有被删除的任务、成员都会保存在这里，点【一键恢复】即可回到原来的位置</p>
+        </div>
+        <button onclick="closeTrashModal()" class="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div id="trashListContainer" class="p-6 space-y-3 max-h-[70vh] overflow-y-auto">
+      </div>
+
+      <div class="px-6 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+        <button onclick="emptyTrashAll()" class="text-xs text-rose-600 hover:underline cursor-pointer">
+          清空回收站
+        </button>
+        <button onclick="closeTrashModal()" class="px-5 py-1.5 rounded-xl bg-slate-800 text-white text-xs font-semibold hover:bg-slate-700 cursor-pointer">
+          关闭
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL 5: IMAGE PREVIEW & DOWNLOAD FOR BOSS ================= -->
+  <div id="imagePreviewModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-5xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+      <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+        <div>
+          <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+            <i class="fa-solid fa-image text-emerald-600"></i>
+            <span>已生成汇报高清图（可直接下载或右键复制图片发微信给领导）</span>
+          </h3>
+          <p class="text-xs text-slate-500 mt-0.5">提示：点击下方【下载保存图片】，或者直接在下方图片上点<b>鼠标右键 -> 复制图片</b>，即可在微信/钉钉里直接粘贴发送！</p>
+        </div>
+        <button onclick="closeImagePreviewModal()" class="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="p-5 bg-slate-100 overflow-auto flex-1 flex items-start justify-center">
+        <img id="generatedScheduleImg" src="" alt="团队排期汇报表" class="max-w-full rounded-xl shadow-md border border-slate-200 bg-white">
+      </div>
+
+      <div class="px-6 py-3.5 bg-white border-t border-slate-200 flex items-center justify-between">
+        <span class="text-xs text-slate-500">💡 小技巧：在图片上右键选择“复制图片”发微信最快！</span>
+        <div class="flex items-center gap-2.5">
+          <button onclick="closeImagePreviewModal()" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-medium cursor-pointer">
+            关闭预览
+          </button>
+          <a id="downloadScheduleImgLink" href="#" download="团队排期汇报表.png"
+             class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-download"></i>
+            <span>下载保存图片 (.PNG)</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL 6: GITHUB CLOUD SYNC SETTINGS (方法一: GitHub仓库多人云同步) ================= -->
+  <div id="cloudSyncModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-xl w-full shadow-2xl border border-slate-200 overflow-hidden">
+      <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+        <div>
+          <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+            <i class="fa-brands fa-github text-slate-900 text-lg"></i>
+            <span>GitHub 仓库多人实时云同步配置</span>
+          </h3>
+          <p class="text-xs text-slate-500 mt-0.5">将数据自动存储在您的 GitHub 仓库 <code class="bg-slate-200 px-1 rounded">data.json</code> 中，实现全团队跨电脑/手机自动同步</p>
+        </div>
+        <button onclick="closeCloudSyncModal()" class="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <form onsubmit="saveCloudSyncConfig(event)" class="p-6 space-y-4 text-xs max-h-[80vh] overflow-y-auto">
+        <!-- Quick Step Guide -->
+        <div class="bg-indigo-50/70 border border-indigo-100 rounded-xl p-3.5 space-y-1.5 text-slate-700 leading-relaxed">
+          <div class="font-bold text-indigo-900 flex items-center gap-1.5">
+            <i class="fa-solid fa-circle-question text-indigo-600"></i> 怎么获取 GitHub Token？（只需设置 1 次，1分钟搞定）
+          </div>
+          <ol class="list-decimal list-inside space-y-1 text-[11px] text-slate-600">
+            <li>登录 GitHub，点击右上角头像 -> <b>Settings</b> -> 左侧最底部 <b>Developer settings</b>。</li>
+            <li>点击 <b>Personal access tokens</b> -> <b>Tokens (classic)</b> -> <b>Generate new token (classic)</b>。</li>
+            <li>Note 随便填（如 <code class="bg-white px-1 rounded">team</code>），Expiration 选 <b>No expiration（永不过期）</b>，勾选第一项 <b><code class="bg-white px-1 rounded">repo</code></b> 权限，滑到底部点生成。</li>
+            <li>把生成的 <code class="bg-white px-1 rounded">ghp_xxxx...</code> 密钥复制填到下方，点<b>【保存并生成团队免配链接】</b>发给手下即可！</li>
+          </ol>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">1. GitHub 用户名 (Owner) <span class="text-rose-500">*</span></label>
+            <input type="text" id="ghOwnerInput" required placeholder="例如: zhangsan"
+              class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:border-indigo-500 outline-none text-xs font-medium">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">2. 仓库名称 (Repo) <span class="text-rose-500">*</span></label>
+            <input type="text" id="ghRepoInput" required placeholder="例如: team-task-tracker"
+              class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:border-indigo-500 outline-none text-xs font-medium">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+          <div class="sm:col-span-2">
+            <label class="block font-bold text-slate-700 mb-1">3. GitHub 访问令牌 (Token) <span class="text-rose-500">*</span></label>
+            <input type="password" id="ghTokenInput" required placeholder="粘贴 ghp_ 开头的 Token"
+              class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:border-indigo-500 outline-none text-xs font-mono">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">分支名称 (Branch)</label>
+            <input type="text" id="ghBranchInput" value="main" required placeholder="main"
+              class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:border-indigo-500 outline-none text-xs font-medium">
+          </div>
+        </div>
+
+        <!-- Sync Status & Manual Pull/Push Actions -->
+        <div id="ghSyncActionBox" class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-2">
+          <div class="text-[11px] text-slate-500" id="ghLastSyncTimeText">
+            当前状态：尚未连接云端仓库
+          </div>
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="pullFromGitHubCloud(true)" class="px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 font-semibold cursor-pointer">
+              <i class="fa-solid fa-cloud-arrow-down mr-1 text-indigo-600"></i>从云端拉取最新
+            </button>
+            <button type="button" onclick="pushToGitHubCloud(true)" class="px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 font-semibold cursor-pointer">
+              <i class="fa-solid fa-cloud-arrow-up mr-1 text-emerald-600"></i>强制推送到云端
+            </button>
+          </div>
+        </div>
+
+        <!-- One-Click Share Link for Subordinates -->
+        <div id="ghShareUrlBox" class="hidden bg-emerald-50/80 border border-emerald-200 rounded-xl p-3.5 space-y-2">
+          <div class="font-bold text-emerald-900 flex items-center justify-between">
+            <span>🎉 团队专属免配置同步链接（直接发给手下打开即可自动连上云端）：</span>
+            <button type="button" onclick="copyTeamSyncLink()" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] cursor-pointer">
+              <i class="fa-regular fa-copy mr-1"></i>复制团队链接
+            </button>
+          </div>
+          <input type="text" id="ghTeamShareLinkInput" readonly
+            class="w-full px-2.5 py-1.5 rounded-lg bg-white border border-emerald-200 text-[11px] text-slate-600 font-mono select-all focus:outline-none">
+        </div>
+
+        <div class="pt-2 flex items-center justify-between border-t border-slate-100">
+          <button type="button" onclick="disconnectCloudSync()" class="text-rose-600 hover:underline cursor-pointer">
+            断开云同步
+          </button>
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="closeCloudSyncModal()" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-medium cursor-pointer">
+              关闭
+            </button>
+            <button type="submit" id="saveCloudConfigBtn" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-sm cursor-pointer">
+              保存并连接云同步
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= APPLICATION JAVASCRIPT ================= -->
+  <script>
+    const STORAGE_KEY = 'TEAMPULSE_DATA_V3';
+    const ACCESS_PASSCODE = '2026';
+    const AUTH_SESSION_KEY = 'TEAMPULSE_UNLOCKED_2026';
+
+    function checkAccessOnLoad() {
+      const lockScreen = document.getElementById('authLockScreen');
+      if (sessionStorage.getItem(AUTH_SESSION_KEY) === '1') {
+        lockScreen.classList.add('hidden');
+        lockScreen.classList.remove('flex');
+      } else {
+        lockScreen.classList.remove('hidden');
+        lockScreen.classList.add('flex');
+        setTimeout(() => document.getElementById('passcodeField')?.focus(), 50);
+      }
+    }
+
+    function verifyAccessPasscode(event) {
+      event.preventDefault();
+      const input = document.getElementById('passcodeField');
+      const errEl = document.getElementById('passcodeErrorMsg');
+      if (input.value.trim() === ACCESS_PASSCODE) {
+        sessionStorage.setItem(AUTH_SESSION_KEY, '1');
+        errEl.classList.add('hidden');
+        input.value = '';
+        checkAccessOnLoad();
+      } else {
+        errEl.classList.remove('hidden');
+        input.value = '';
+        input.focus();
+      }
+    }
+
+    function lockSystemNow() {
+      sessionStorage.removeItem(AUTH_SESSION_KEY);
+      checkAccessOnLoad();
+    }
+
+    function formatDate(dateObj) {
+      const y = dateObj.getFullYear();
+      const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const d = String(dateObj.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function addDays(dateStr, days) {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const dt = new Date(y, m - 1, d);
+      dt.setDate(dt.getDate() + days);
+      return formatDate(dt);
+    }
+
+    function getTodayStr() {
+      return formatDate(new Date());
+    }
+
+    function getInitialDemoData() {
+      const today = getTodayStr();
+      return {
+        currentActorId: 'm1',
+        selectedPersonalMemberId: 'all',
+        viewMode: 'matrix',
+        startDate: addDays(today, -1),
+        daysToShow: 10,
+        safeLock: false,
+        trash: [],
+        projectOptions: [
+          '重点项目A',
+          '大客户B专项',
+          '内部系统升级',
+          '日常运营维护',
+          '部门统筹管理'
+        ],
+        workContentOptions: [
+          '制定部门重点计划 & 客户合同终审',
+          '新项目执行方案初稿撰写',
+          '协助修改宣传物料文案',
+          '搭建内部数据统计自动化报表',
+          '系统接口权限申请与联调',
+          '日常客户群答疑与周报汇总',
+          '需求调研与原型设计',
+          '项目进度复盘与汇报会议'
+        ],
+        members: [
+          { id: 'm1', name: '我 (负责人)', role: '项目总负责 / 统筹', capacity: 8, color: 'indigo', isBoss: true, active: true },
+          { id: 'm2', name: '成员A (小王)', role: '项目成员 · 方案执行', capacity: 8, color: 'emerald', isBoss: false, active: true },
+          { id: 'm3', name: '成员B (小李)', role: '项目成员 · 技术落地', capacity: 8, color: 'blue', isBoss: false, active: true },
+          { id: 'm4', name: '成员C (小张)', role: '项目成员 · 运营对接', capacity: 8, color: 'amber', isBoss: false, active: true }
+        ],
+        tasks: [
+          {
+            id: 't1',
+            memberId: 'm1',
+            collaborators: ['m4'],
+            project: '大客户B专项',
+            title: '制定部门重点计划 & 客户合同终审',
+            startDate: today,
+            endDate: addDays(today, 1),
+            hoursPerDay: 3,
+            status: 'doing',
+            source: 'self',
+            priority: 'high',
+            note: '带小张一起对接客户B'
+          },
+          {
+            id: 't3',
+            memberId: 'm2',
+            collaborators: [],
+            project: '重点项目A',
+            title: '新项目执行方案初稿撰写',
+            startDate: addDays(today, -1),
+            endDate: addDays(today, 1),
+            hoursPerDay: 5,
+            status: 'doing',
+            source: 'assigned',
+            priority: 'high',
+            note: '负责人指派：需要包含竞品对比数据'
+          },
+          {
+            id: 't4',
+            memberId: 'm2',
+            collaborators: [],
+            project: '日常运营维护',
+            title: '协助修改宣传物料文案',
+            startDate: today,
+            endDate: today,
+            hoursPerDay: 4,
+            status: 'doing',
+            source: 'self',
+            priority: 'normal',
+            note: '成员自建：市场部临时找过来帮忙'
+          },
+          {
+            id: 't6',
+            memberId: 'm3',
+            collaborators: ['m2'],
+            project: '重点项目A',
+            title: '搭建内部数据统计自动化报表',
+            startDate: addDays(today, -1),
+            endDate: addDays(today, 2),
+            hoursPerDay: 6,
+            status: 'doing',
+            source: 'assigned',
+            priority: 'high',
+            note: '小李主负责，小王配合核对字段'
+          },
+          {
+            id: 't7',
+            memberId: 'm3',
+            collaborators: [],
+            project: '内部系统升级',
+            title: '系统接口权限申请与联调',
+            startDate: today,
+            endDate: addDays(today, 1),
+            hoursPerDay: 1.5,
+            status: 'blocked',
+            source: 'self',
+            priority: 'high',
+            note: '⚠️ 卡点：运维部门一直没批权限，需要负责人帮忙催一下'
+          },
+          {
+            id: 't8',
+            memberId: 'm4',
+            collaborators: [],
+            project: '日常运营维护',
+            title: '日常客户群答疑与周报汇总',
+            startDate: today,
+            endDate: addDays(today, 4),
+            hoursPerDay: 2.5,
+            status: 'doing',
+            source: 'self',
+            priority: 'normal',
+            note: '每天固定例行工作'
+          }
+        ]
+      };
+    }
+
+    let state = loadState();
+    let undoTimer = null;
+    const CLOUD_CONFIG_KEY = 'TEAMPULSE_GH_CLOUD_CONFIG_V1';
+    let cloudConfig = loadCloudConfig();
+    let cloudFileSha = null;
+    let cloudPushTimer = null;
+    let isSyncingCloud = false;
+
+    function loadCloudConfig() {
+      try {
+        // Check if URL hash contains #sync=BASE64_CONFIG (for one-click team onboarding)
+        if (window.location.hash && window.location.hash.startsWith('#sync=')) {
+          const b64 = window.location.hash.replace('#sync=', '');
+          const decoded = JSON.parse(decodeURIComponent(escape(atob(b64))));
+          if (decoded && decoded.owner && decoded.repo && decoded.token) {
+            localStorage.setItem(CLOUD_CONFIG_KEY, JSON.stringify(decoded));
+            history.replaceState(null, '', window.location.pathname + window.location.search);
+            return decoded;
+          }
+        }
+        const raw = localStorage.getItem(CLOUD_CONFIG_KEY);
+        if (raw) return JSON.parse(raw);
+      } catch (e) {
+        console.error('Failed to parse cloud config', e);
+      }
+      return null;
+    }
+
+    function updateCloudStatusBadge(statusText, statusType = 'idle') {
+      const btn = document.getElementById('cloudSyncStatusBtn');
+      if (!btn) return;
+      if (!cloudConfig || !cloudConfig.token) {
+        btn.className = 'px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-xs sm:text-sm font-medium flex items-center gap-1.5 transition shadow-xs cursor-pointer';
+        btn.innerHTML = `<i class="fa-solid fa-cloud text-slate-400"></i><span>云同步:未配</span>`;
+        return;
+      }
+      if (statusType === 'syncing') {
+        btn.className = 'px-3 py-2 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition shadow-xs cursor-pointer';
+        btn.innerHTML = `<i class="fa-solid fa-rotate fa-spin text-indigo-600"></i><span>${statusText || '同步中...'}</span>`;
+      } else if (statusType === 'error') {
+        btn.className = 'px-3 py-2 rounded-xl border border-rose-300 bg-rose-50 text-rose-700 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition shadow-xs cursor-pointer';
+        btn.innerHTML = `<i class="fa-solid fa-cloud-bolt text-rose-600"></i><span>${statusText || '同步失败'}</span>`;
+      } else {
+        btn.className = 'px-3 py-2 rounded-xl border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100/70 text-emerald-700 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition shadow-xs cursor-pointer';
+        btn.innerHTML = `<i class="fa-solid fa-cloud-check text-emerald-600"></i><span>${statusText || '云端已同步'}</span>`;
+      }
+    }
+
+    function utf8ToBase64(str) {
+      return btoa(unescape(encodeURIComponent(str)));
+    }
+
+    function base64ToUtf8(b64) {
+      return decodeURIComponent(escape(atob(b64.replace(/\s/g, ''))));
+    }
+
+    async function pullFromGitHubCloud(showNotice = false) {
+      if (!cloudConfig || !cloudConfig.owner || !cloudConfig.repo || !cloudConfig.token) return;
+      isSyncingCloud = true;
+      updateCloudStatusBadge('拉取云端...', 'syncing');
+
+      const branch = cloudConfig.branch || 'main';
+      const url = `https://api.github.com/repos/${cloudConfig.owner}/${cloudConfig.repo}/contents/data.json?ref=${encodeURIComponent(branch)}&_t=${Date.now()}`;
+
+      try {
+        const res = await fetch(url, {
+          headers: {
+            'Authorization': `token ${cloudConfig.token}`,
+            'Accept': 'application/vnd.github.v3+json'
+          }
+        });
+
+        if (res.status === 404) {
+          // data.json doesn't exist yet on GitHub -> initialize it with current local state
+          isSyncingCloud = false;
+          await pushToGitHubCloud(false);
+          if (showNotice) alert('✅ 云端首次初始化完成！已将当前排期数据上传至 GitHub 仓库 data.json。');
+          return;
+        }
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+
+        const fileInfo = await res.json();
+        cloudFileSha = fileInfo.sha;
+        const remoteJsonStr = base64ToUtf8(fileInfo.content);
+        const remoteData = JSON.parse(remoteJsonStr);
+
+        if (remoteData && Array.isArray(remoteData.members) && Array.isArray(remoteData.tasks)) {
+          // Preserve current user's local view preferences while syncing shared team data
+          const localActor = state.currentActorId;
+          const localView = state.viewMode;
+          state = {
+            ...remoteData,
+            currentActorId: localActor || remoteData.currentActorId,
+            viewMode: localView || 'matrix'
+          };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+          renderSafeLockAndTrashButton();
+          renderActorSelector();
+          renderSummaryKPIs();
+          renderMatrixView();
+          renderPersonalView();
+        }
+
+        const timeStr = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+        updateCloudStatusBadge('云端已同步', 'ok');
+        const statusEl = document.getElementById('ghLastSyncTimeText');
+        if (statusEl) statusEl.textContent = `✅ 最近云端同步成功：${timeStr}`;
+        if (showNotice) alert('✅ 已从 GitHub 云端拉取最新团队排期数据！');
+      } catch (err) {
+        console.error('GitHub Cloud Pull Error:', err);
+        updateCloudStatusBadge('云同步异常', 'error');
+        const statusEl = document.getElementById('ghLastSyncTimeText');
+        if (statusEl) statusEl.textContent = `❌ 同步失败：请检查用户名、仓库名或 Token 权限 (${err.message})`;
+        if (showNotice) alert(`❌ 从 GitHub 拉取失败 (${err.message})，请检查配置是否正确。`);
+      } finally {
+        isSyncingCloud = false;
+      }
+    }
+
+    async function pushToGitHubCloud(showNotice = false) {
+      if (!cloudConfig || !cloudConfig.owner || !cloudConfig.repo || !cloudConfig.token) return;
+      isSyncingCloud = true;
+      updateCloudStatusBadge('正在保存云端...', 'syncing');
+
+      const branch = cloudConfig.branch || 'main';
+      const url = `https://api.github.com/repos/${cloudConfig.owner}/${cloudConfig.repo}/contents/data.json`;
+
+      try {
+        // Always fetch latest sha first to prevent conflict when multiple people edit
+        if (!cloudFileSha) {
+          const checkRes = await fetch(`${url}?ref=${encodeURIComponent(branch)}&_t=${Date.now()}`, {
+            headers: {
+              'Authorization': `token ${cloudConfig.token}`,
+              'Accept': 'application/vnd.github.v3+json'
+            }
+          });
+          if (checkRes.ok) {
+            const checkData = await checkRes.json();
+            cloudFileSha = checkData.sha;
+          }
+        }
+
+        const payload = {
+          message: `Sync team schedule (${new Date().toLocaleString('zh-CN', { hour12: false })})`,
+          content: utf8ToBase64(JSON.stringify(state, null, 2)),
+          branch
+        };
+        if (cloudFileSha) payload.sha = cloudFileSha;
+
+        const putRes = await fetch(url, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `token ${cloudConfig.token}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (putRes.status === 409) {
+          // SHA conflict: someone else updated just now, refresh SHA and retry once
+          cloudFileSha = null;
+          isSyncingCloud = false;
+          return await pushToGitHubCloud(showNotice);
+        }
+
+        if (!putRes.ok) {
+          throw new Error(`HTTP ${putRes.status}`);
+        }
+
+        const putResult = await putRes.json();
+        cloudFileSha = putResult.content?.sha || null;
+
+        const timeStr = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+        updateCloudStatusBadge('云端已同步', 'ok');
+        const statusEl = document.getElementById('ghLastSyncTimeText');
+        if (statusEl) statusEl.textContent = `✅ 最近云端保存成功：${timeStr}`;
+        if (showNotice) alert('✅ 当前排期数据已成功推送到 GitHub 云端仓库！');
+      } catch (err) {
+        console.error('GitHub Cloud Push Error:', err);
+        updateCloudStatusBadge('云保存失败', 'error');
+        if (showNotice) alert(`❌ 推送到 GitHub 失败 (${err.message})，请检查 Token 是否勾选了 repo 权限。`);
+      } finally {
+        isSyncingCloud = false;
+      }
+    }
+
+    function scheduleCloudPush() {
+      if (!cloudConfig || !cloudConfig.token) return;
+      if (cloudPushTimer) clearTimeout(cloudPushTimer);
+      updateCloudStatusBadge('待同步...', 'syncing');
+      cloudPushTimer = setTimeout(() => {
+        pushToGitHubCloud(false);
+      }, 900);
+    }
+
+    function openCloudSyncModal() {
+      const modal = document.getElementById('cloudSyncModal');
+      // Auto-detect owner & repo if hosted on github.io
+      let defaultOwner = '';
+      let defaultRepo = '';
+      if (window.location.hostname.endsWith('.github.io')) {
+        defaultOwner = window.location.hostname.split('.')[0];
+        const pathParts = window.location.pathname.split('/').filter(Boolean);
+        if (pathParts.length > 0) defaultRepo = pathParts[0];
+      }
+
+      document.getElementById('ghOwnerInput').value = cloudConfig?.owner || defaultOwner;
+      document.getElementById('ghRepoInput').value = cloudConfig?.repo || defaultRepo;
+      document.getElementById('ghTokenInput').value = cloudConfig?.token || '';
+      document.getElementById('ghBranchInput').value = cloudConfig?.branch || 'main';
+
+      renderTeamShareLinkBox();
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeCloudSyncModal() {
+      const modal = document.getElementById('cloudSyncModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function renderTeamShareLinkBox() {
+      const box = document.getElementById('ghShareUrlBox');
+      if (cloudConfig && cloudConfig.owner && cloudConfig.repo && cloudConfig.token) {
+        const b64 = utf8ToBase64(JSON.stringify(cloudConfig));
+        const baseUrl = window.location.origin + window.location.pathname;
+        document.getElementById('ghTeamShareLinkInput').value = `${baseUrl}#sync=${b64}`;
+        box.classList.remove('hidden');
+      } else {
+        box.classList.add('hidden');
+      }
+    }
+
+    function copyTeamSyncLink() {
+      const input = document.getElementById('ghTeamShareLinkInput');
+      input.select();
+      navigator.clipboard.writeText(input.value).then(() => {
+        alert('✅ 团队专属免配置链接已复制！\n直接发到微信群里，手下点开后会自动完成云同步配置，无需他们再填 Token！');
+      });
+    }
+
+    async function saveCloudSyncConfig(event) {
+      event.preventDefault();
+      const owner = document.getElementById('ghOwnerInput').value.trim();
+      const repo = document.getElementById('ghRepoInput').value.trim();
+      const token = document.getElementById('ghTokenInput').value.trim();
+      const branch = document.getElementById('ghBranchInput').value.trim() || 'main';
+
+      cloudConfig = { owner, repo, token, branch };
+      localStorage.setItem(CLOUD_CONFIG_KEY, JSON.stringify(cloudConfig));
+      cloudFileSha = null;
+      renderTeamShareLinkBox();
+      await pullFromGitHubCloud(true);
+    }
+
+    function disconnectCloudSync() {
+      if (!confirm('确定要断开此设备上的 GitHub 云同步连接吗？（本地数据会保留）')) return;
+      localStorage.removeItem(CLOUD_CONFIG_KEY);
+      cloudConfig = null;
+      cloudFileSha = null;
+      renderTeamShareLinkBox();
+      updateCloudStatusBadge();
+      closeCloudSyncModal();
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && Array.isArray(parsed.members) && Array.isArray(parsed.tasks)) {
+            if (!Array.isArray(parsed.projectOptions)) parsed.projectOptions = getInitialDemoData().projectOptions;
+            if (!Array.isArray(parsed.workContentOptions)) parsed.workContentOptions = getInitialDemoData().workContentOptions;
+            if (!Array.isArray(parsed.trash)) parsed.trash = [];
+            if (typeof parsed.safeLock !== 'boolean') parsed.safeLock = false;
+            return parsed;
+          }
+        }
+      } catch (e) {
+        console.error('Failed to read localStorage', e);
+      }
+      return getInitialDemoData();
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        scheduleCloudPush();
+      } catch (e) {
+        console.error('Failed to save localStorage', e);
+      }
+    }
+
+    const COLOR_MAP = {
+      indigo: 'bg-indigo-600 text-white',
+      emerald: 'bg-emerald-600 text-white',
+      blue: 'bg-blue-600 text-white',
+      amber: 'bg-amber-500 text-white',
+      purple: 'bg-purple-600 text-white',
+      rose: 'bg-rose-600 text-white',
+      cyan: 'bg-cyan-600 text-white',
+      slate: 'bg-slate-700 text-white'
+    };
+    const COLOR_KEYS = Object.keys(COLOR_MAP);
+
+    function isMemberInvolvedInTask(memberId, task) {
+      if (task.memberId === memberId) return true;
+      if (Array.isArray(task.collaborators) && task.collaborators.includes(memberId)) return true;
+      return false;
+    }
+
+    function getMemberDayStats(memberId, dateStr) {
+      const dayTasks = state.tasks.filter(t =>
+        isMemberInvolvedInTask(memberId, t) &&
+        t.startDate <= dateStr &&
+        t.endDate >= dateStr
+      );
+
+      let activeHours = 0;
+      let doneHours = 0;
+      let hasBlocked = false;
+
+      dayTasks.forEach(t => {
+        const h = Number(t.hoursPerDay) || 0;
+        if (t.status === 'done') {
+          doneHours += h;
+        } else {
+          activeHours += h;
+          if (t.status === 'blocked') hasBlocked = true;
+        }
+      });
+
+      return {
+        tasks: dayTasks,
+        activeHours: Math.round(activeHours * 10) / 10,
+        doneHours: Math.round(doneHours * 10) / 10,
+        totalHours: Math.round((activeHours + doneHours) * 10) / 10,
+        hasBlocked
+      };
+    }
+
+    function getLoadBadgeStyle(activeHours, capacity) {
+      if (activeHours === 0) {
+        return {
+          bg: 'bg-slate-100 text-slate-400 border-slate-200',
+          cellBg: 'bg-white',
+          barColor: 'bg-slate-200',
+          label: '空闲 0h',
+          level: 'free'
+        };
+      }
+      if (activeHours < capacity * 0.75) {
+        return {
+          bg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+          cellBg: 'bg-emerald-50/15',
+          barColor: 'bg-emerald-500',
+          label: `轻松 ${activeHours}h`,
+          level: 'light'
+        };
+      } else if (activeHours <= capacity) {
+        return {
+          bg: 'bg-amber-50 text-amber-700 border-amber-200',
+          cellBg: 'bg-amber-50/20',
+          barColor: 'bg-amber-500',
+          label: `饱和 ${activeHours}h`,
+          level: 'full'
+        };
+      } else {
+        return {
+          bg: 'bg-rose-100 text-rose-700 border-rose-300 font-bold',
+          cellBg: 'bg-rose-50/35',
+          barColor: 'bg-rose-500',
+          label: `超载 ${activeHours}h!`,
+          level: 'overload'
+        };
+      }
+    }
+
+    // ================= EXPORT AS HIGH-RES IMAGE FOR BOSS =================
+    async function exportScheduleAsImage() {
+      const btn = document.getElementById('exportImgBtn');
+      const originalHtml = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>正在生成高清图...</span>`;
+
+      const captureEl = document.getElementById('captureReportArea');
+      const rangeText = document.getElementById('dateRangeLabel').textContent;
+      const nowStr = new Date().toLocaleString('zh-CN', { hour12: false });
+      document.getElementById('exportReportSubTitle').textContent =
+        `排期周期：${rangeText}  |  在岗人数：${state.members.filter(m => m.active !== false).length}人  |  生成时间：${nowStr}`;
+
+      // Temporarily add snapshot styling so wide tables expand fully without horizontal scroll clipping
+      captureEl.classList.add('exporting-snapshot');
+
+      const tableEl = document.getElementById('matrixTableElement');
+      const fullWidth = Math.max(captureEl.scrollWidth, tableEl ? tableEl.scrollWidth + 60 : 1200);
+
+      try {
+        await new Promise(r => setTimeout(r, 120));
+        const canvas = await html2canvas(captureEl, {
+          scale: 2, // 2x Retina clarity for WeChat / DingTalk viewing
+          useCORS: true,
+          backgroundColor: '#f8fafc',
+          width: fullWidth,
+          windowWidth: fullWidth + 80
+        });
+
+        const dataUrl = canvas.toDataURL('image/png');
+        const imgEl = document.getElementById('generatedScheduleImg');
+        const dlLink = document.getElementById('downloadScheduleImgLink');
+        const filename = `团队工作排期汇报_${getTodayStr()}.png`;
+
+        imgEl.src = dataUrl;
+        dlLink.href = dataUrl;
+        dlLink.download = filename;
+
+        // Also trigger direct download automatically for convenience
+        dlLink.click();
+
+        // Open preview modal so user can also right-click copy directly to WeChat
+        const previewModal = document.getElementById('imagePreviewModal');
+        previewModal.classList.remove('hidden');
+        previewModal.classList.add('flex');
+      } catch (err) {
+        console.error('Export image failed:', err);
+        alert('生成图片失败，请检查网络连接或使用浏览器自带截图功能。');
+      } finally {
+        captureEl.classList.remove('exporting-snapshot');
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+      }
+    }
+
+    function closeImagePreviewModal() {
+      const modal = document.getElementById('imagePreviewModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    // ================= ANTI-ACCIDENTAL DELETE HELPERS =================
+
+    function toggleSafeLock() {
+      state.safeLock = !state.safeLock;
+      renderAll();
+    }
+
+    function renderSafeLockAndTrashButton() {
+      const btn = document.getElementById('safeLockBtn');
+      if (state.safeLock) {
+        btn.className = 'px-2.5 py-2 rounded-xl border border-amber-300 bg-amber-50 text-amber-800 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer';
+        btn.innerHTML = `<i class="fa-solid fa-lock text-amber-600"></i><span class="hidden xl:inline">已锁删除</span>`;
+      } else {
+        btn.className = 'px-2.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-xs font-medium flex items-center gap-1.5 transition cursor-pointer';
+        btn.innerHTML = `<i class="fa-solid fa-lock-open text-slate-400"></i><span class="hidden xl:inline">防删锁:关</span>`;
+      }
+
+      const trashBadge = document.getElementById('trashCountBadge');
+      const count = Array.isArray(state.trash) ? state.trash.length : 0;
+      trashBadge.textContent = count;
+      trashBadge.className = count > 0
+        ? 'px-1.5 py-0.2 bg-rose-600 text-white rounded-full text-xs font-semibold'
+        : 'px-1.5 py-0.2 bg-slate-100 text-slate-600 rounded-full text-xs font-semibold';
+    }
+
+    function showUndoToast(msg) {
+      const toast = document.getElementById('undoToast');
+      document.getElementById('undoToastMsg').textContent = msg;
+      toast.classList.remove('hidden');
+      toast.classList.add('flex');
+      if (undoTimer) clearTimeout(undoTimer);
+      undoTimer = setTimeout(() => {
+        hideUndoToast();
+      }, 8000);
+    }
+
+    function hideUndoToast() {
+      const toast = document.getElementById('undoToast');
+      toast.classList.add('hidden');
+      toast.classList.remove('flex');
+    }
+
+    function undoLastDelete() {
+      if (!Array.isArray(state.trash) || state.trash.length === 0) return;
+      restoreTrashItem(0);
+      hideUndoToast();
+    }
+
+    // ================= RENDER FUNCTIONS =================
+
+    function renderAll() {
+      saveState();
+      renderSafeLockAndTrashButton();
+      renderActorSelector();
+      renderSummaryKPIs();
+      renderMatrixView();
+      renderPersonalView();
+    }
+
+    function renderActorSelector() {
+      const sel = document.getElementById('currentActorSelect');
+      const activeMembers = state.members.filter(m => m.active !== false);
+      sel.innerHTML = activeMembers.map(m =>
+        `<option value="${m.id}" ${m.id === state.currentActorId ? 'selected' : ''}>${escapeHtml(m.name)} (${m.isBoss ? '负责人' : '项目成员'})</option>`
+      ).join('');
+      document.getElementById('memberCountBadge').textContent = activeMembers.length;
+    }
+
+    function handleActorChange(memberId) {
+      state.currentActorId = memberId;
+      saveState();
+    }
+
+    function renderSummaryKPIs() {
+      const today = getTodayStr();
+      const activeMembers = state.members.filter(m => m.active !== false);
+
+      let availableCount = 0;
+      let overloadCount = 0;
+
+      activeMembers.forEach(m => {
+        const stats = getMemberDayStats(m.id, today);
+        if (stats.activeHours < m.capacity * 0.75) {
+          availableCount++;
+        } else if (stats.activeHours > m.capacity) {
+          overloadCount++;
+        }
+      });
+
+      const blockedTasksCount = state.tasks.filter(t => t.status === 'blocked').length;
+
+      document.getElementById('statActiveMembers').textContent = `${activeMembers.length}人`;
+      document.getElementById('statAvailableToday').textContent = `${availableCount}人`;
+      document.getElementById('statOverloadToday').textContent = `${overloadCount}人`;
+      document.getElementById('statBlockedTasks').textContent = `${blockedTasksCount}项`;
+    }
+
+    function getMatrixDateList() {
+      const list = [];
+      const count = Number(state.daysToShow) || 10;
+      const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+      const today = getTodayStr();
+
+      for (let i = 0; i < count; i++) {
+        const dStr = addDays(state.startDate, i);
+        const [y, m, d] = dStr.split('-').map(Number);
+        const dt = new Date(y, m - 1, d);
+        const wDay = weekDays[dt.getDay()];
+        const isWeekend = dt.getDay() === 0 || dt.getDay() === 6;
+        const isToday = dStr === today;
+        list.push({
+          dateStr: dStr,
+          monthDay: `${m}/${d}`,
+          weekDay: `周${wDay}`,
+          isWeekend,
+          isToday
+        });
+      }
+      return list;
+    }
+
+    function renderMatrixView() {
+      const dates = getMatrixDateList();
+      const today = getTodayStr();
+      const filterFreeOnly = document.getElementById('filterFreeOnly').checked;
+
+      if (dates.length > 0) {
+        document.getElementById('dateRangeLabel').textContent =
+          `${dates[0].monthDay} - ${dates[dates.length - 1].monthDay}`;
+      }
+
+      const headerRow = document.getElementById('matrixHeaderRow');
+      let headerHtml = `
+        <th class="sticky left-0 z-20 bg-slate-50 px-4 py-3 w-56 min-w-[215px] border-r border-slate-200 shadow-[1px_0_0_0_#e2e8f0]">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-700">负责人 / 项目成员</span>
+            <button onclick="openMemberModal()" class="no-export text-[11px] text-indigo-600 hover:underline font-medium cursor-pointer">
+              <i class="fa-solid fa-pen-to-square"></i> 改名单
+            </button>
+          </div>
+          <div class="text-[11px] font-normal text-slate-400 mt-0.5">姓名与岗位分工</div>
+        </th>
+      `;
+
+      dates.forEach(d => {
+        const todayHighlight = d.isToday
+          ? 'bg-indigo-50/90 text-indigo-700 border-b-2 border-b-indigo-600'
+          : (d.isWeekend ? 'bg-slate-100/70 text-slate-500' : 'text-slate-700');
+
+        headerHtml += `
+          <th class="px-2.5 py-2.5 min-w-[155px] border-r border-slate-200/80 text-center ${todayHighlight}">
+            <div class="flex items-center justify-center gap-1 text-xs font-bold">
+              <span>${d.monthDay}</span>
+              <span class="text-[11px] font-normal ${d.isToday ? 'bg-indigo-600 text-white px-1.5 py-0.2 rounded-full' : 'text-slate-400'}">
+                ${d.isToday ? '今天' : d.weekDay}
+              </span>
+            </div>
+          </th>
+        `;
+      });
+      headerRow.innerHTML = headerHtml;
+
+      const tbody = document.getElementById('matrixBody');
+      let activeMembers = state.members.filter(m => m.active !== false);
+
+      if (filterFreeOnly) {
+        activeMembers = activeMembers.filter(m => {
+          const st = getMemberDayStats(m.id, today);
+          return st.activeHours < m.capacity;
+        });
+      }
+
+      if (activeMembers.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="${dates.length + 1}" class="py-12 text-center text-slate-400 text-sm">
+              没有符合筛选条件的成员，请取消勾选“仅看今日未满载”或点击右上角【改负责人/成员】添加人员。
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      let bodyHtml = '';
+      activeMembers.forEach(member => {
+        const todayStats = getMemberDayStats(member.id, today);
+        const todayBadge = getLoadBadgeStyle(todayStats.activeHours, member.capacity);
+        const avatarClass = COLOR_MAP[member.color] || COLOR_MAP.indigo;
+
+        bodyHtml += `<tr class="group transition-colors">`;
+
+        // Left Sticky Member Info Column
+        bodyHtml += `
+          <td onclick="openMemberModal()" title="点击直接修改【${escapeHtml(member.name)}】的姓名、角色或增减成员"
+              class="sticky left-0 z-10 bg-white group-hover:bg-slate-50/90 px-4 py-3.5 border-r border-slate-200 align-top shadow-[1px_0_0_0_#e2e8f0] cursor-pointer member-card-hover">
+            <div class="flex items-start gap-2.5">
+              <div class="w-8 h-8 rounded-xl ${avatarClass} flex items-center justify-center font-bold text-xs shrink-0 mt-0.5 shadow-xs">
+                ${escapeHtml(member.name.slice(0, 1))}
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="font-bold text-slate-800 text-sm truncate flex items-center gap-1">
+                  <span class="hover:text-indigo-600 transition">${escapeHtml(member.name)}</span>
+                  ${member.isBoss
+                    ? '<span class="text-[10px] px-1.5 py-0.2 bg-indigo-50 text-indigo-600 rounded border border-indigo-200 font-medium shrink-0">负责人</span>'
+                    : '<span class="text-[10px] px-1.5 py-0.2 bg-slate-100 text-slate-600 rounded font-normal shrink-0">项目成员</span>'}
+                  <i class="fa-solid fa-pen text-[10px] text-indigo-500 edit-hint-icon ml-auto"></i>
+                </div>
+                <div class="text-xs text-slate-400 truncate mt-0.5">${escapeHtml(member.role || '点击设置岗位分工')}</div>
+                <div class="mt-2 flex items-center gap-1.5">
+                  <span class="text-[11px] px-2 py-0.5 rounded-full border ${todayBadge.bg}">
+                    今日: ${todayBadge.label}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </td>
+        `;
+
+        // Date Cells
+        dates.forEach(d => {
+          const dayStats = getMemberDayStats(member.id, d.dateStr);
+          const loadStyle = getLoadBadgeStyle(dayStats.activeHours, member.capacity);
+          const ratioPct = Math.min(100, Math.round((dayStats.activeHours / member.capacity) * 100));
+
+          const weekendBg = d.isWeekend && dayStats.activeHours === 0 ? 'bg-slate-50/50' : loadStyle.cellBg;
+          const todayBorder = d.isToday ? 'ring-1 ring-inset ring-indigo-500/30' : '';
+
+          bodyHtml += `
+            <td onclick="handleCellClick('${member.id}', '${d.dateStr}', event)"
+                class="p-2 border-r border-slate-200/70 align-top min-h-[110px] cursor-pointer hover:bg-indigo-50/30 transition relative cell-hover ${weekendBg} ${todayBorder}">
+              
+              <!-- Cell Header: Load Progress Bar & Hours -->
+              <div class="flex items-center justify-between gap-1 mb-1.5">
+                <div class="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div class="h-full ${loadStyle.barColor} transition-all duration-300" style="width: ${ratioPct}%"></div>
+                </div>
+                <span class="text-[11px] font-medium ${dayStats.activeHours > member.capacity ? 'text-rose-600 font-bold' : (dayStats.activeHours > 0 ? 'text-slate-600' : 'text-slate-300')}">
+                  ${dayStats.activeHours}h/${member.capacity}h
+                </span>
+              </div>
+
+              <!-- Task Pills inside the cell -->
+              <div class="space-y-1.5">
+                ${dayStats.tasks.map(task => renderMatrixTaskPill(task, member.id)).join('')}
+              </div>
+
+              <!-- Hover "+ 记任务" hint -->
+              <div class="add-btn-hint opacity-0 transition-opacity mt-1.5 text-center">
+                <span class="inline-block text-[11px] text-indigo-600 bg-indigo-50/90 hover:bg-indigo-100 px-2 py-0.5 rounded border border-indigo-200/60">
+                  + 记任务
+                </span>
+              </div>
+            </td>
+          `;
+        });
+
+        bodyHtml += `</tr>`;
+      });
+
+      tbody.innerHTML = bodyHtml;
+    }
+
+    function renderMatrixTaskPill(task, currentRowMemberId) {
+      const isDone = task.status === 'done';
+      const isBlocked = task.status === 'blocked';
+      const isCollaborator = task.memberId !== currentRowMemberId;
+
+      let cardStyle = 'bg-white border-slate-200 text-slate-700 hover:border-indigo-400';
+      if (isDone) {
+        cardStyle = 'bg-slate-50 border-slate-200/70 text-slate-400 line-through opacity-75';
+      } else if (isBlocked) {
+        cardStyle = 'bg-rose-50 border-rose-300 text-rose-800 ring-1 ring-rose-200';
+      } else if (task.priority === 'high') {
+        cardStyle = 'bg-white border-l-4 border-l-indigo-500 border-slate-200 text-slate-800 shadow-2xs';
+      }
+
+      const projectBadge = task.project
+        ? `<div class="text-[10px] font-semibold text-indigo-600 bg-indigo-50/80 px-1.5 py-0.2 rounded border border-indigo-100 inline-block mb-1 max-w-full truncate">📁 ${escapeHtml(task.project)}</div>`
+        : '';
+
+      const roleHintBadge = isCollaborator
+        ? `<span class="text-[10px] px-1 rounded bg-purple-50 text-purple-600 border border-purple-200 shrink-0" title="作为项目成员参与协作">协作成员</span>`
+        : (task.source === 'assigned'
+            ? '<span class="text-[10px] px-1 rounded bg-indigo-50 text-indigo-600 border border-indigo-100 shrink-0">主责</span>'
+            : '<span class="text-[10px] px-1 rounded bg-slate-100 text-slate-500 shrink-0">自建</span>');
+
+      const statusIcon = isBlocked
+        ? '<i class="fa-solid fa-triangle-exclamation text-rose-600 text-[11px] shrink-0" title="卡点求助"></i>'
+        : (isDone ? '<i class="fa-solid fa-circle-check text-emerald-500 text-[11px] shrink-0"></i>' : '');
+
+      const activeMembers = state.members.filter(m => m.active !== false);
+      const ownerOptions = activeMembers.map(m =>
+        `<option value="${m.id}" ${m.id === task.memberId ? 'selected' : ''}>${escapeHtml(m.name)}</option>`
+      ).join('');
+
+      const collabCount = Array.isArray(task.collaborators) ? task.collaborators.length : 0;
+
+      return `
+        <div onclick="openTaskModal('${task.id}', event)"
+             class="p-1.5 rounded-lg border text-xs transition hover:shadow-xs ${cardStyle}">
+          ${projectBadge}
+          <div class="flex items-start justify-between gap-1">
+            <span class="font-medium leading-snug break-all line-clamp-2">${escapeHtml(task.title)}</span>
+            ${statusIcon}
+          </div>
+
+          <div class="flex items-center justify-between gap-1 mt-1.5 pt-1 border-t border-slate-100/80 text-[10px]">
+            <div class="flex items-center gap-1 min-w-0" onclick="event.stopPropagation()">
+              ${roleHintBadge}
+              <select onchange="quickChangeTaskOwner('${task.id}', this.value, event)"
+                      title="直接点击切换该任务的负责人"
+                      class="bg-transparent text-[10px] text-slate-600 hover:text-indigo-600 font-medium focus:outline-none cursor-pointer truncate max-w-[78px]">
+                ${ownerOptions}
+              </select>
+              ${collabCount > 0 ? `<span class="text-[10px] text-purple-600 font-medium" title="还有${collabCount}位项目成员共同参与">+${collabCount}人</span>` : ''}
+            </div>
+            <span class="font-semibold shrink-0 ${isDone ? 'text-slate-400' : 'text-indigo-600'}">${task.hoursPerDay}h</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function quickChangeTaskOwner(taskId, newOwnerId, event) {
+      if (event) event.stopPropagation();
+      const task = state.tasks.find(t => t.id === taskId);
+      if (task && newOwnerId) {
+        task.memberId = newOwnerId;
+        if (Array.isArray(task.collaborators)) {
+          task.collaborators = task.collaborators.filter(cid => cid !== newOwnerId);
+        }
+        renderAll();
+      }
+    }
+
+    // ================= PERSONAL KANBAN VIEW =================
+    function renderPersonalView() {
+      const activeMembers = state.members.filter(m => m.active !== false);
+      const selectedId = state.selectedPersonalMemberId || 'all';
+
+      const tabsContainer = document.getElementById('personalMemberTabs');
+      let tabsHtml = `
+        <button onclick="selectPersonalMember('all')"
+          class="px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${selectedId === 'all' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+          全部人员 (${state.tasks.length})
+        </button>
+      `;
+
+      activeMembers.forEach(m => {
+        const count = state.tasks.filter(t => isMemberInvolvedInTask(m.id, t) && t.status !== 'done').length;
+        const isSelected = selectedId === m.id;
+        tabsHtml += `
+          <button onclick="selectPersonalMember('${m.id}')"
+            class="px-3 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer ${isSelected ? 'bg-indigo-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+            <span>${escapeHtml(m.name)}</span>
+            <span class="px-1.5 py-0.2 rounded-full text-[10px] ${isSelected ? 'bg-indigo-500 text-white' : 'bg-white text-slate-600'}">${count}待办</span>
+          </button>
+        `;
+      });
+      tabsContainer.innerHTML = tabsHtml;
+
+      const statusFilter = document.getElementById('personalStatusFilter').value;
+      const columns = [
+        { key: 'todo', title: '⏳ 待开始', headerBg: 'bg-slate-100 text-slate-700', border: 'border-slate-200' },
+        { key: 'doing', title: '🚀 进行中', headerBg: 'bg-blue-50 text-blue-700', border: 'border-blue-200' },
+        { key: 'blocked', title: '⚠️ 卡点 / 需协调', headerBg: 'bg-rose-50 text-rose-700', border: 'border-rose-200' },
+        { key: 'done', title: '✅ 已完成', headerBg: 'bg-emerald-50 text-emerald-700', border: 'border-emerald-200' }
+      ];
+
+      let filteredTasks = state.tasks.filter(t => {
+        if (selectedId !== 'all' && !isMemberInvolvedInTask(selectedId, t)) return false;
+        if (statusFilter === 'active' && t.status === 'done') return false;
+        if (statusFilter === 'blocked' && t.status !== 'blocked') return false;
+        if (statusFilter === 'done' && t.status !== 'done') return false;
+        return true;
+      });
+
+      const board = document.getElementById('personalKanbanBoard');
+      board.innerHTML = columns.map(col => {
+        const colTasks = filteredTasks.filter(t => t.status === col.key);
+        return `
+          <div class="bg-white rounded-2xl border ${col.border} shadow-xs flex flex-col h-full min-h-[420px]">
+            <div class="px-4 py-3 ${col.headerBg} rounded-t-2xl font-bold text-xs flex items-center justify-between">
+              <span>${col.title}</span>
+              <span class="px-2 py-0.5 bg-white/80 rounded-full text-xs">${colTasks.length}</span>
+            </div>
+            <div class="p-3 space-y-2.5 flex-1">
+              ${colTasks.length === 0
+                ? `<div class="text-center py-12 text-xs text-slate-300">暂无该状态任务</div>`
+                : colTasks.map(task => renderKanbanCard(task)).join('')
+              }
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderKanbanCard(task) {
+      const activeMembers = state.members.filter(m => m.active !== false);
+      const ownerOptions = activeMembers.map(m =>
+        `<option value="${m.id}" ${m.id === task.memberId ? 'selected' : ''}>负责人: ${escapeHtml(m.name)}</option>`
+      ).join('');
+
+      const collabNames = (task.collaborators || [])
+        .map(cid => state.members.find(m => m.id === cid)?.name)
+        .filter(Boolean);
+
+      return `
+        <div class="p-3.5 rounded-xl border border-slate-200 hover:border-indigo-300 bg-white shadow-2xs transition space-y-2">
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              ${task.project ? `<span class="inline-block text-[11px] px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100 font-semibold mb-1">📁 ${escapeHtml(task.project)}</span>` : ''}
+              <h4 onclick="openTaskModal('${task.id}', event)" class="font-bold text-slate-800 text-xs sm:text-sm hover:text-indigo-600 cursor-pointer leading-snug">
+                ${escapeHtml(task.title)}
+              </h4>
+            </div>
+            <span class="shrink-0 text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg">
+              ${task.hoursPerDay}h/天
+            </span>
+          </div>
+
+          ${task.note ? `<p class="text-xs text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-100">${escapeHtml(task.note)}</p>` : ''}
+
+          <div class="pt-2 border-t border-slate-100 space-y-1.5 text-xs">
+            <div class="flex items-center justify-between gap-2">
+              <select onchange="quickChangeTaskOwner('${task.id}', this.value, event)"
+                      class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-semibold text-slate-700 hover:border-indigo-400 focus:outline-none cursor-pointer">
+                ${ownerOptions}
+              </select>
+              <span class="text-[11px] text-slate-400">
+                📅 ${task.startDate.slice(5)} ~ ${task.endDate.slice(5)}
+              </span>
+            </div>
+
+            <div class="flex items-center justify-between text-[11px] text-slate-500">
+              <span>
+                👥 项目成员: ${collabNames.length > 0 ? `<b class="text-slate-700">${escapeHtml(collabNames.join('、'))}</b>` : '无协作成员'}
+              </span>
+              <button onclick="openTaskModal('${task.id}', event)" class="no-export text-indigo-600 hover:underline cursor-pointer">
+                +改成员
+              </button>
+            </div>
+          </div>
+
+          <div class="pt-1 flex items-center justify-end gap-1.5 no-export">
+            ${task.status !== 'doing' ? `<button onclick="quickChangeStatus('${task.id}', 'doing')" class="text-[11px] px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 cursor-pointer">设为进行中</button>` : ''}
+            ${task.status !== 'blocked' ? `<button onclick="quickChangeStatus('${task.id}', 'blocked')" class="text-[11px] px-2 py-1 rounded bg-rose-50 text-rose-600 hover:bg-rose-100 cursor-pointer">标为卡点</button>` : ''}
+            ${task.status !== 'done' ? `<button onclick="quickChangeStatus('${task.id}', 'done')" class="text-[11px] px-2 py-1 rounded bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-medium cursor-pointer">✓ 完成</button>` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    function selectPersonalMember(memberId) {
+      state.selectedPersonalMemberId = memberId;
+      renderPersonalView();
+    }
+
+    function quickChangeStatus(taskId, newStatus) {
+      const t = state.tasks.find(item => item.id === taskId);
+      if (t) {
+        t.status = newStatus;
+        renderAll();
+      }
+    }
+
+    // ================= NAVIGATION & VIEW SWITCHING =================
+    function switchView(mode) {
+      state.viewMode = mode;
+      const viewMatrix = document.getElementById('viewMatrix');
+      const viewPersonal = document.getElementById('viewPersonal');
+      const tabMatrix = document.getElementById('tabMatrix');
+      const tabPersonal = document.getElementById('tabPersonal');
+
+      if (mode === 'matrix') {
+        viewMatrix.classList.remove('hidden');
+        viewPersonal.classList.add('hidden');
+        viewPersonal.classList.remove('flex');
+        tabMatrix.className = 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 bg-white text-indigo-600 shadow-sm cursor-pointer';
+        tabPersonal.className = 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 text-slate-600 hover:text-slate-900 cursor-pointer';
+      } else {
+        viewMatrix.classList.add('hidden');
+        viewPersonal.classList.remove('hidden');
+        viewPersonal.classList.add('flex');
+        tabPersonal.className = 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 bg-white text-indigo-600 shadow-sm cursor-pointer';
+        tabMatrix.className = 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 text-slate-600 hover:text-slate-900 cursor-pointer';
+      }
+      renderAll();
+    }
+
+    function shiftDateRange(days) {
+      state.startDate = addDays(state.startDate, days);
+      renderAll();
+    }
+
+    function resetDateToToday() {
+      state.startDate = addDays(getTodayStr(), -1);
+      renderAll();
+    }
+
+    function handleDaysCountChange(val) {
+      state.daysToShow = Number(val) || 10;
+      renderAll();
+    }
+
+    // ================= TASK MODAL LOGIC =================
+    let currentEditingCollaborators = [];
+    let deleteTaskConfirmArmed = false;
+
+    function handleCellClick(memberId, dateStr, event) {
+      if (event.target.closest('[onclick^="openTaskModal"]') || event.target.tagName === 'SELECT') return;
+      openTaskModal(null, null, memberId, dateStr);
+    }
+
+    function populateProjectSelect(selectedProject = '') {
+      const sel = document.getElementById('taskProjectSelect');
+      if (selectedProject && !state.projectOptions.includes(selectedProject)) {
+        state.projectOptions.unshift(selectedProject);
+      }
+      if (state.projectOptions.length === 0) {
+        state.projectOptions.push('默认项目');
+      }
+      sel.innerHTML = state.projectOptions.map(p =>
+        `<option value="${escapeHtml(p)}" ${p === selectedProject ? 'selected' : ''}>${escapeHtml(p)}</option>`
+      ).join('');
+    }
+
+    function populateWorkContentSelect(selectedTitle = '') {
+      const sel = document.getElementById('taskTitleSelect');
+      if (selectedTitle && !state.workContentOptions.includes(selectedTitle)) {
+        state.workContentOptions.unshift(selectedTitle);
+      }
+      if (state.workContentOptions.length === 0) {
+        state.workContentOptions.push('常规工作推进');
+      }
+      sel.innerHTML = state.workContentOptions.map(w =>
+        `<option value="${escapeHtml(w)}" ${w === selectedTitle ? 'selected' : ''}>${escapeHtml(w)}</option>`
+      ).join('');
+    }
+
+    function toggleQuickAddProject() {
+      const box = document.getElementById('quickAddProjectBox');
+      box.classList.toggle('hidden');
+      if (!box.classList.contains('hidden')) {
+        document.getElementById('newProjectNameInput').focus();
+      }
+    }
+
+    function confirmQuickAddProject() {
+      const input = document.getElementById('newProjectNameInput');
+      const val = input.value.trim();
+      if (!val) return;
+      if (!state.projectOptions.includes(val)) {
+        state.projectOptions.unshift(val);
+        saveState();
+      }
+      populateProjectSelect(val);
+      input.value = '';
+      document.getElementById('quickAddProjectBox').classList.add('hidden');
+    }
+
+    function toggleQuickAddWorkItem() {
+      const box = document.getElementById('quickAddWorkItemBox');
+      box.classList.toggle('hidden');
+      if (!box.classList.contains('hidden')) {
+        document.getElementById('newWorkItemNameInput').focus();
+      }
+    }
+
+    function confirmQuickAddWorkItem() {
+      const input = document.getElementById('newWorkItemNameInput');
+      const val = input.value.trim();
+      if (!val) return;
+      if (!state.workContentOptions.includes(val)) {
+        state.workContentOptions.unshift(val);
+        saveState();
+      }
+      populateWorkContentSelect(val);
+      input.value = '';
+      document.getElementById('quickAddWorkItemBox').classList.add('hidden');
+    }
+
+    function renderCollaboratorCheckboxes() {
+      const container = document.getElementById('collaboratorCheckboxes');
+      const primaryId = document.getElementById('taskAssigneeInput').value;
+      const activeMembers = state.members.filter(m => m.active !== false && m.id !== primaryId);
+
+      if (activeMembers.length === 0) {
+        container.innerHTML = `<span class="text-xs text-slate-400">暂无其他可选成员</span>`;
+        return;
+      }
+
+      container.innerHTML = activeMembers.map(m => {
+        const checked = currentEditingCollaborators.includes(m.id) ? 'checked' : '';
+        return `
+          <label class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:border-indigo-300 text-xs cursor-pointer select-none">
+            <input type="checkbox" name="collabMember" value="${m.id}" ${checked}
+              onchange="toggleCollaboratorSelection('${m.id}', this.checked)"
+              class="rounded text-indigo-600 focus:ring-indigo-500">
+            <span class="font-medium text-slate-700">${escapeHtml(m.name)}</span>
+          </label>
+        `;
+      }).join('');
+    }
+
+    function toggleCollaboratorSelection(memberId, isChecked) {
+      if (isChecked) {
+        if (!currentEditingCollaborators.includes(memberId)) {
+          currentEditingCollaborators.push(memberId);
+        }
+      } else {
+        currentEditingCollaborators = currentEditingCollaborators.filter(id => id !== memberId);
+      }
+    }
+
+    function resetDeleteTaskBtnState() {
+      deleteTaskConfirmArmed = false;
+      const deleteBtn = document.getElementById('deleteTaskBtn');
+      deleteBtn.className = 'px-3 py-2 rounded-xl text-rose-600 hover:bg-rose-50 text-xs font-semibold flex items-center gap-1 cursor-pointer transition';
+      deleteBtn.innerHTML = `<i class="fa-regular fa-trash-can"></i> <span>移入回收站</span>`;
+    }
+
+    function openTaskModal(taskId = null, event = null, defaultMemberId = null, defaultDate = null) {
+      if (event) event.stopPropagation();
+
+      const modal = document.getElementById('taskModal');
+      const assigneeSelect = document.getElementById('taskAssigneeInput');
+      const activeMembers = state.members.filter(m => m.active !== false);
+
+      assigneeSelect.innerHTML = activeMembers.map(m =>
+        `<option value="${m.id}">${escapeHtml(m.name)} (${m.isBoss ? '负责人' : '项目成员'})</option>`
+      ).join('');
+
+      document.getElementById('quickAddProjectBox').classList.add('hidden');
+      document.getElementById('quickAddWorkItemBox').classList.add('hidden');
+      resetDeleteTaskBtnState();
+
+      const deleteBtn = document.getElementById('deleteTaskBtn');
+
+      if (taskId) {
+        const task = state.tasks.find(t => t.id === taskId);
+        if (!task) return;
+        document.getElementById('taskModalTitle').innerHTML = `<i class="fa-solid fa-pen-to-square text-indigo-600"></i><span>修改任务排期</span>`;
+        document.getElementById('taskIdInput').value = task.id;
+        populateProjectSelect(task.project || state.projectOptions[0]);
+        populateWorkContentSelect(task.title || state.workContentOptions[0]);
+        document.getElementById('taskAssigneeInput').value = task.memberId;
+        currentEditingCollaborators = Array.isArray(task.collaborators) ? [...task.collaborators] : [];
+        document.getElementById('taskSourceInput').value = task.source || 'assigned';
+        document.getElementById('taskStartInput').value = task.startDate;
+        document.getElementById('taskEndInput').value = task.endDate;
+        document.getElementById('taskHoursPerDayInput').value = task.hoursPerDay;
+        document.getElementById('taskStatusInput').value = task.status;
+        document.getElementById('taskPriorityInput').value = task.priority || 'normal';
+        document.getElementById('taskNoteInput').value = task.note || '';
+        deleteBtn.classList.remove('hidden');
+      } else {
+        const today = getTodayStr();
+        const targetMember = defaultMemberId || state.currentActorId || activeMembers[0]?.id;
+        const targetDate = defaultDate || today;
+
+        const currentActor = state.members.find(m => m.id === state.currentActorId);
+        const defaultSource = (currentActor?.isBoss && targetMember !== state.currentActorId) ? 'assigned' : 'self';
+
+        document.getElementById('taskModalTitle').innerHTML = `<i class="fa-solid fa-plus-circle text-indigo-600"></i><span>记录 / 派发任务</span>`;
+        document.getElementById('taskIdInput').value = '';
+        populateProjectSelect(state.projectOptions[0] || '');
+        populateWorkContentSelect(state.workContentOptions[0] || '');
+        document.getElementById('taskAssigneeInput').value = targetMember;
+        currentEditingCollaborators = [];
+        document.getElementById('taskSourceInput').value = defaultSource;
+        document.getElementById('taskStartInput').value = targetDate;
+        document.getElementById('taskEndInput').value = targetDate;
+        document.getElementById('taskHoursPerDayInput').value = 2;
+        document.getElementById('taskStatusInput').value = 'todo';
+        document.getElementById('taskPriorityInput').value = 'normal';
+        document.getElementById('taskNoteInput').value = '';
+        deleteBtn.classList.add('hidden');
+      }
+
+      renderCollaboratorCheckboxes();
+      updateWorkloadPreview();
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeTaskModal() {
+      const modal = document.getElementById('taskModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function setQuickHours(h) {
+      document.getElementById('taskHoursPerDayInput').value = h;
+      updateWorkloadPreview();
+    }
+
+    function updateWorkloadPreview() {
+      const s = document.getElementById('taskStartInput').value;
+      const e = document.getElementById('taskEndInput').value;
+      const h = Number(document.getElementById('taskHoursPerDayInput').value) || 0;
+      const previewEl = document.getElementById('workloadPreviewText');
+
+      if (s && e) {
+        const sd = new Date(s);
+        const ed = new Date(e);
+        const diffDays = Math.floor((ed - sd) / (1000 * 60 * 60 * 24)) + 1;
+        if (diffDays <= 0) {
+          previewEl.innerHTML = `<span class="text-rose-600 font-semibold">⚠️ 结束日期不能早于开始日期</span>`;
+        } else {
+          const totalH = Math.round(diffDays * h * 10) / 10;
+          previewEl.innerHTML = `持续 <b>${diffDays}</b> 天，每人每天占用 <b>${h}h</b>，单人累计 <b>${totalH}h</b>`;
+        }
+      }
+    }
+
+    function saveTaskForm(event) {
+      event.preventDefault();
+      const pendingNewProj = document.getElementById('newProjectNameInput').value.trim();
+      if (pendingNewProj && !document.getElementById('quickAddProjectBox').classList.contains('hidden')) {
+        confirmQuickAddProject();
+      }
+      const pendingNewWork = document.getElementById('newWorkItemNameInput').value.trim();
+      if (pendingNewWork && !document.getElementById('quickAddWorkItemBox').classList.contains('hidden')) {
+        confirmQuickAddWorkItem();
+      }
+
+      const id = document.getElementById('taskIdInput').value;
+      const project = document.getElementById('taskProjectSelect').value.trim();
+      const title = document.getElementById('taskTitleSelect').value.trim();
+      const memberId = document.getElementById('taskAssigneeInput').value;
+      const collaborators = currentEditingCollaborators.filter(cid => cid !== memberId);
+      const source = document.getElementById('taskSourceInput').value;
+      const startDate = document.getElementById('taskStartInput').value;
+      const endDate = document.getElementById('taskEndInput').value;
+      const hoursPerDay = Number(document.getElementById('taskHoursPerDayInput').value) || 1;
+      const status = document.getElementById('taskStatusInput').value;
+      const priority = document.getElementById('taskPriorityInput').value;
+      const note = document.getElementById('taskNoteInput').value.trim();
+
+      if (endDate < startDate) {
+        alert('结束日期不能早于开始日期！');
+        return;
+      }
+
+      if (id) {
+        const idx = state.tasks.findIndex(t => t.id === id);
+        if (idx !== -1) {
+          state.tasks[idx] = {
+            ...state.tasks[idx],
+            project,
+            title,
+            memberId,
+            collaborators,
+            source,
+            startDate,
+            endDate,
+            hoursPerDay,
+            status,
+            priority,
+            note
+          };
+        }
+      } else {
+        state.tasks.push({
+          id: 't_' + Date.now(),
+          project,
+          title,
+          memberId,
+          collaborators,
+          source,
+          startDate,
+          endDate,
+          hoursPerDay,
+          status,
+          priority,
+          note
+        });
+      }
+
+      closeTaskModal();
+      renderAll();
+    }
+
+    function handleSafeDeleteTaskClick() {
+      if (state.safeLock) {
+        alert('当前已开启右上角【已锁删除】防误删锁！如需删除请先在顶部解锁。');
+        return;
+      }
+      const deleteBtn = document.getElementById('deleteTaskBtn');
+      if (!deleteTaskConfirmArmed) {
+        deleteTaskConfirmArmed = true;
+        deleteBtn.className = 'px-3 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold flex items-center gap-1 cursor-pointer transition shadow-sm';
+        deleteBtn.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> <span>再点一次确认移入回收站</span>`;
+        setTimeout(() => {
+          if (deleteTaskConfirmArmed) resetDeleteTaskBtnState();
+        }, 3500);
+        return;
+      }
+
+      const id = document.getElementById('taskIdInput').value;
+      if (!id) return;
+      const targetTask = state.tasks.find(t => t.id === id);
+      if (targetTask) {
+        state.trash.unshift({
+          trashType: 'task',
+          deletedAt: new Date().toLocaleString(),
+          data: targetTask
+        });
+        state.tasks = state.tasks.filter(t => t.id !== id);
+        closeTaskModal();
+        renderAll();
+        showUndoToast(`任务「${targetTask.title}」已移入回收站`);
+      }
+    }
+
+    // ================= MODAL 3: DICTIONARY MANAGER =================
+    function openDictModal() {
+      renderDictModalLists();
+      const modal = document.getElementById('dictModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeDictModal() {
+      const modal = document.getElementById('dictModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      renderAll();
+    }
+
+    function renderDictModalLists() {
+      document.getElementById('projectOptionCount').textContent = `共 ${state.projectOptions.length} 个`;
+      document.getElementById('workContentOptionCount').textContent = `共 ${state.workContentOptions.length} 项`;
+
+      const projContainer = document.getElementById('dictProjectList');
+      projContainer.innerHTML = state.projectOptions.map((p, idx) => {
+        const usedCount = state.tasks.filter(t => t.project === p).length;
+        return `
+          <div class="flex items-center justify-between gap-2 bg-white px-3 py-1.5 rounded-lg border border-slate-200">
+            <input type="text" value="${escapeHtml(p)}"
+              onchange="updateDictProject(${idx}, this.value)"
+              class="flex-1 text-xs text-slate-800 font-medium focus:outline-none focus:text-indigo-600">
+            ${usedCount > 0 ? `<span class="text-[10px] px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-600 shrink-0">${usedCount}个任务在用</span>` : ''}
+            <button onclick="removeDictProject(${idx})" class="text-slate-400 hover:text-rose-600 p-1 cursor-pointer" title="删除该项目名称">
+              <i class="fa-regular fa-trash-can text-xs"></i>
+            </button>
+          </div>
+        `;
+      }).join('');
+
+      const workContainer = document.getElementById('dictWorkContentList');
+      workContainer.innerHTML = state.workContentOptions.map((w, idx) => {
+        const usedCount = state.tasks.filter(t => t.title === w).length;
+        return `
+          <div class="flex items-center justify-between gap-2 bg-white px-3 py-1.5 rounded-lg border border-slate-200">
+            <input type="text" value="${escapeHtml(w)}"
+              onchange="updateDictWorkContent(${idx}, this.value)"
+              class="flex-1 text-xs text-slate-800 font-medium focus:outline-none focus:text-indigo-600">
+            ${usedCount > 0 ? `<span class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-600 shrink-0">${usedCount}个任务在用</span>` : ''}
+            <button onclick="removeDictWorkContent(${idx})" class="text-slate-400 hover:text-rose-600 p-1 cursor-pointer" title="删除该工作内容">
+              <i class="fa-regular fa-trash-can text-xs"></i>
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function addDictProject(event) {
+      event.preventDefault();
+      const input = document.getElementById('dictNewProjectInput');
+      const val = input.value.trim();
+      if (!val) return;
+      if (!state.projectOptions.includes(val)) {
+        state.projectOptions.unshift(val);
+        saveState();
+      }
+      input.value = '';
+      renderDictModalLists();
+    }
+
+    function updateDictProject(idx, newVal) {
+      const val = newVal.trim();
+      if (!val) return;
+      const oldVal = state.projectOptions[idx];
+      state.projectOptions[idx] = val;
+      state.tasks.forEach(t => {
+        if (t.project === oldVal) t.project = val;
+      });
+      saveState();
+    }
+
+    function removeDictProject(idx) {
+      if (state.safeLock) {
+        alert('当前已开启右上角【已锁删除】防误删锁！');
+        return;
+      }
+      const target = state.projectOptions[idx];
+      const usedCount = state.tasks.filter(t => t.project === target).length;
+      if (usedCount > 0) {
+        if (!confirm(`⚠️ 防误删提醒：项目名称「${target}」当前正被 ${usedCount} 个任务使用！\n确定仍要从下拉库中移除吗？（已有任务上的文字不会丢失）`)) {
+          return;
+        }
+      }
+      state.projectOptions.splice(idx, 1);
+      saveState();
+      renderDictModalLists();
+    }
+
+    function addDictWorkContent(event) {
+      event.preventDefault();
+      const input = document.getElementById('dictNewWorkContentInput');
+      const val = input.value.trim();
+      if (!val) return;
+      if (!state.workContentOptions.includes(val)) {
+        state.workContentOptions.unshift(val);
+        saveState();
+      }
+      input.value = '';
+      renderDictModalLists();
+    }
+
+    function updateDictWorkContent(idx, newVal) {
+      const val = newVal.trim();
+      if (!val) return;
+      const oldVal = state.workContentOptions[idx];
+      state.workContentOptions[idx] = val;
+      state.tasks.forEach(t => {
+        if (t.title === oldVal) t.title = val;
+      });
+      saveState();
+    }
+
+    function removeDictWorkContent(idx) {
+      if (state.safeLock) {
+        alert('当前已开启右上角【已锁删除】防误删锁！');
+        return;
+      }
+      const target = state.workContentOptions[idx];
+      const usedCount = state.tasks.filter(t => t.title === target).length;
+      if (usedCount > 0) {
+        if (!confirm(`⚠️ 防误删提醒：工作内容「${target}」当前正被 ${usedCount} 个任务使用！\n确定仍要从下拉库中移除吗？`)) {
+          return;
+        }
+      }
+      state.workContentOptions.splice(idx, 1);
+      saveState();
+      renderDictModalLists();
+    }
+
+    // ================= DIRECT INLINE EDITING FOR BOSS & PROJECT MEMBERS =================
+    function openMemberModal() {
+      renderMemberListInModal();
+      const modal = document.getElementById('memberModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeMemberModal() {
+      const modal = document.getElementById('memberModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      renderAll();
+    }
+
+    function renderMemberListInModal() {
+      const container = document.getElementById('memberListContainer');
+      container.innerHTML = state.members.map((m) => {
+        const avatarClass = COLOR_MAP[m.color] || COLOR_MAP.indigo;
+        const isActive = m.active !== false;
+        return `
+          <div class="grid grid-cols-1 sm:grid-cols-12 items-center gap-2 p-2.5 rounded-xl border ${isActive ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-200 opacity-60'}">
+            <div class="sm:col-span-3 flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg ${avatarClass} flex items-center justify-center font-bold text-xs shrink-0">
+                ${escapeHtml(m.name.slice(0, 1))}
+              </div>
+              <input type="text" value="${escapeHtml(m.name)}"
+                oninput="updateMemberField('${m.id}', 'name', this.value)"
+                placeholder="输入姓名"
+                class="w-full px-2.5 py-1.5 text-xs font-bold text-slate-800 border border-slate-200 rounded-lg focus:border-indigo-500 focus:outline-none">
+            </div>
+
+            <div class="sm:col-span-3">
+              <input type="text" value="${escapeHtml(m.role || '')}"
+                oninput="updateMemberField('${m.id}', 'role', this.value)"
+                placeholder="岗位/职责"
+                class="w-full px-2.5 py-1.5 text-xs text-slate-600 border border-slate-200 rounded-lg focus:border-indigo-500 focus:outline-none">
+            </div>
+
+            <div class="sm:col-span-2">
+              <select onchange="updateMemberField('${m.id}', 'isBoss', this.value === 'boss')"
+                class="w-full px-2 py-1.5 text-xs rounded-lg border border-slate-200 font-medium ${m.isBoss ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-slate-50 text-slate-700'}">
+                <option value="boss" ${m.isBoss ? 'selected' : ''}>负责人/主管</option>
+                <option value="member" ${!m.isBoss ? 'selected' : ''}>项目成员</option>
+              </select>
+            </div>
+
+            <div class="sm:col-span-2 flex items-center justify-center gap-1 text-xs text-slate-600">
+              <input type="number" value="${m.capacity}" min="1" max="16"
+                onchange="updateMemberField('${m.id}', 'capacity', Number(this.value) || 8)"
+                class="w-14 px-2 py-1 border border-slate-200 rounded-lg text-center font-semibold">
+              <span class="text-[11px] text-slate-400">h/天</span>
+            </div>
+
+            <div class="sm:col-span-2 flex items-center justify-end gap-1.5">
+              <button onclick="toggleMemberActive('${m.id}')"
+                class="text-[11px] px-2 py-1 rounded-lg border cursor-pointer ${isActive ? 'border-slate-200 text-slate-600 hover:bg-slate-100' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}">
+                ${isActive ? '休假隐藏' : '恢复显示'}
+              </button>
+              ${state.members.length > 1 ? `
+                <button onclick="removeMemberToTrash('${m.id}')" class="text-slate-400 hover:text-rose-600 p-1 cursor-pointer" title="移入回收站">
+                  <i class="fa-regular fa-trash-can"></i>
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function updateMemberField(memberId, field, value) {
+      const m = state.members.find(item => item.id === memberId);
+      if (!m) return;
+      m[field] = value;
+      saveState();
+      if (field === 'isBoss') {
+        renderMemberListInModal();
+      }
+      renderAll();
+    }
+
+    function addNewMember(event) {
+      event.preventDefault();
+      const nameInput = document.getElementById('newMemberName');
+      const roleInput = document.getElementById('newMemberRole');
+      const identityInput = document.getElementById('newMemberIdentity');
+      const capInput = document.getElementById('newMemberCapacity');
+
+      const name = nameInput.value.trim();
+      const role = roleInput.value.trim() || '项目成员';
+      const isBoss = identityInput.value === 'boss';
+      const capacity = Number(capInput.value) || 8;
+      if (!name) return;
+
+      const randomColor = COLOR_KEYS[state.members.length % COLOR_KEYS.length];
+      state.members.push({
+        id: 'm_' + Date.now(),
+        name,
+        role,
+        capacity,
+        color: randomColor,
+        isBoss,
+        active: true
+      });
+
+      nameInput.value = '';
+      roleInput.value = '';
+      capInput.value = '8';
+      renderMemberListInModal();
+      renderAll();
+    }
+
+    function toggleMemberActive(memberId) {
+      const m = state.members.find(item => item.id === memberId);
+      if (m) {
+        m.active = m.active === false ? true : false;
+        renderMemberListInModal();
+        renderAll();
+      }
+    }
+
+    function removeMemberToTrash(memberId) {
+      if (state.safeLock) {
+        alert('当前已开启右上角【已锁删除】防误删锁！');
+        return;
+      }
+      const member = state.members.find(m => m.id === memberId);
+      if (!member) return;
+      const memberTasks = state.tasks.filter(t => t.memberId === memberId);
+
+      if (!confirm(`确定将成员「${member.name}」及其名下的 ${memberTasks.length} 项任务移入回收站吗？\n（移入后可在右上角【回收站】随时一键恢复）`)) {
+        return;
+      }
+
+      state.trash.unshift({
+        trashType: 'member',
+        deletedAt: new Date().toLocaleString(),
+        data: member,
+        relatedTasks: memberTasks
+      });
+
+      state.members = state.members.filter(m => m.id !== memberId);
+      state.tasks = state.tasks.filter(t => t.memberId !== memberId);
+      renderMemberListInModal();
+      renderAll();
+      showUndoToast(`成员「${member.name}」已移入回收站`);
+    }
+
+    // ================= MODAL 4: RECYCLE BIN =================
+    function openTrashModal() {
+      renderTrashList();
+      const modal = document.getElementById('trashModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeTrashModal() {
+      const modal = document.getElementById('trashModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function renderTrashList() {
+      const container = document.getElementById('trashListContainer');
+      if (!Array.isArray(state.trash) || state.trash.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-12 text-slate-400 text-sm">
+            <i class="fa-solid fa-shield-cat text-3xl text-slate-300 mb-2 block"></i>
+            回收站为空，目前没有被删除的任务或人员。
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = state.trash.map((item, idx) => {
+        if (item.trashType === 'task') {
+          const t = item.data;
+          return `
+            <div class="flex items-center justify-between gap-3 p-3.5 rounded-xl border border-slate-200 bg-slate-50/70">
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="text-[10px] px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 font-bold">任务</span>
+                  <span class="text-xs font-bold text-slate-800">${escapeHtml(t.project ? `【${t.project}】` : '')}${escapeHtml(t.title)}</span>
+                </div>
+                <div class="text-[11px] text-slate-400 mt-1">
+                  排期: ${t.startDate} ~ ${t.endDate} (${t.hoursPerDay}h/天) · 删除于 ${item.deletedAt}
+                </div>
+              </div>
+              <button onclick="restoreTrashItem(${idx})" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shrink-0 cursor-pointer">
+                <i class="fa-solid fa-rotate-left mr-1"></i>一键恢复
+              </button>
+            </div>
+          `;
+        } else if (item.trashType === 'member') {
+          const m = item.data;
+          const tCount = (item.relatedTasks || []).length;
+          return `
+            <div class="flex items-center justify-between gap-3 p-3.5 rounded-xl border border-slate-200 bg-slate-50/70">
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="text-[10px] px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold">团队成员</span>
+                  <span class="text-xs font-bold text-slate-800">${escapeHtml(m.name)} (${escapeHtml(m.role)})</span>
+                </div>
+                <div class="text-[11px] text-slate-400 mt-1">
+                  含名下 ${tCount} 项关联任务 · 删除于 ${item.deletedAt}
+                </div>
+              </div>
+              <button onclick="restoreTrashItem(${idx})" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shrink-0 cursor-pointer">
+                <i class="fa-solid fa-rotate-left mr-1"></i>一键恢复
+              </button>
+            </div>
+          `;
+        }
+        return '';
+      }).join('');
+    }
+
+    function restoreTrashItem(idx) {
+      const item = state.trash[idx];
+      if (!item) return;
+
+      if (item.trashType === 'task') {
+        state.tasks.push(item.data);
+      } else if (item.trashType === 'member') {
+        state.members.push(item.data);
+        if (Array.isArray(item.relatedTasks)) {
+          state.tasks.push(...item.relatedTasks);
+        }
+      }
+
+      state.trash.splice(idx, 1);
+      renderTrashList();
+      renderAll();
+    }
+
+    function emptyTrashAll() {
+      if (!state.trash || state.trash.length === 0) return;
+      if (!confirm('确定要彻底清空回收站吗？清空后将无法再恢复。')) return;
+      state.trash = [];
+      renderTrashList();
+      renderAll();
+    }
+
+    // ================= DATA BACKUP, IMPORT & PROTECTED RESET =================
+    function resetDemoData() {
+      const code = prompt('⚠️ 防误操作保护：恢复初始演示数据将清空您当前录入的所有数据！\n如确认重置，请在下方输入「重置」两个字：');
+      if (code !== '重置') {
+        if (code !== null) alert('输入口令不匹配，已取消重置操作，您的数据很安全。');
+        return;
+      }
+      state = getInitialDemoData();
+      renderAll();
+    }
+
+    function exportDataJson() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
+      const dlAnchor = document.createElement('a');
+      dlAnchor.setAttribute("href", dataStr);
+      dlAnchor.setAttribute("download", `team_schedule_backup_${getTodayStr()}.json`);
+      document.body.appendChild(dlAnchor);
+      dlAnchor.click();
+      dlAnchor.remove();
+    }
+
+    function importDataJson(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const imported = JSON.parse(e.target.result);
+          if (imported && Array.isArray(imported.members) && Array.isArray(imported.tasks)) {
+            state = imported;
+            if (!Array.isArray(state.trash)) state.trash = [];
+            renderAll();
+            alert('✅ 备份数据导入恢复成功！');
+          } else {
+            alert('❌ 文件格式不正确，请选择本程序导出的 JSON 备份文件。');
+          }
+        } catch (err) {
+          alert('❌ 读取备份文件失败！');
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/[&<>"']/g, function(m) {
+        return ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#039;'
+        })[m];
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      checkAccessOnLoad();
+      updateCloudStatusBadge();
+      renderAll();
+      if (cloudConfig && cloudConfig.token) {
+        pullFromGitHubCloud(false);
+        // Auto refresh from cloud every 45 seconds when page is visible
+        setInterval(() => {
+          if (!document.hidden && !isSyncingCloud) {
+            pullFromGitHubCloud(false);
+          }
+        }, 45000);
+      }
+    });
+  </script>
+</body>
+</html>

@@ -200,7 +200,7 @@
       "source": "assigned",
       "startDate": "2026-11-16",
       "endDate": "2026-11-20",
-      "hoursPerDay": 8,
+      "hoursPerDay": 4,
       "status": "todo",
       "priority": "normal",
       "note": ""

@@ -187,6 +187,20 @@
       "status": "doing",
       "priority": "normal",
       "note": ""
+    },
+    {
+      "id": "t_1794540632610",
+      "project": "雅尼项目",
+      "title": "消落带，汇口图纸",
+      "memberId": "m3",
+      "collaborators": [],
+      "source": "assigned",
+      "startDate": "2026-11-16",
+      "endDate": "2026-11-20",
+      "hoursPerDay": 8,
+      "status": "todo",
+      "priority": "normal",
+      "note": ""
     }
   ]
 }

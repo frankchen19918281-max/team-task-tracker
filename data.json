@@ -174,5 +174,20 @@
       "active": true
     }
   ],
-  "tasks": []
+  "tasks": [
+    {
+      "id": "t_1794539905891",
+      "project": "重点项目A",
+      "title": "制定部门重点计划 & 客户合同终审",
+      "memberId": "m1",
+      "collaborators": [],
+      "source": "self",
+      "startDate": "2026-11-13",
+      "endDate": "2026-11-13",
+      "hoursPerDay": 2,
+      "status": "todo",
+      "priority": "normal",
+      "note": ""
+    }
+  ]
 }

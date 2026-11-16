@@ -216,7 +216,7 @@
       "source": "self",
       "startDate": "2026-11-16",
       "endDate": "2026-11-16",
-      "hoursPerDay": 2,
+      "hoursPerDay": 2.5,
       "status": "done",
       "priority": "normal",
       "note": "",

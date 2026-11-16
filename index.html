@@ -894,127 +894,312 @@
       return formatDate(new Date());
     }
 
+    const DEFAULT_GH_OWNER = 'frankchen19918281-max';
+    const DEFAULT_GH_REPO = 'team-task-tracker';
+    const DEFAULT_GH_BRANCH = 'main';
+
     function getInitialDemoData() {
-      const today = getTodayStr();
       return {
         currentActorId: 'm1',
         selectedPersonalMemberId: 'all',
         viewMode: 'matrix',
-        startDate: addDays(today, -1),
-        daysToShow: 10,
+        startDate: '2026-11-15',
+        daysToShow: 14,
         safeLock: false,
-        trash: [],
+        trash: [
+          {
+            trashType: 'task',
+            deletedAt: '2026/11/13 11:16:25',
+            data: {
+              id: 't8',
+              memberId: 'm4',
+              collaborators: [],
+              project: '日常运营维护',
+              title: '日常客户群答疑与周报汇总',
+              startDate: '2026-11-13',
+              endDate: '2026-11-17',
+              hoursPerDay: 2.5,
+              status: 'doing',
+              source: 'self',
+              priority: 'normal',
+              note: '每天固定例行工作'
+            }
+          },
+          {
+            trashType: 'task',
+            deletedAt: '2026/11/13 11:16:23',
+            data: {
+              id: 't7',
+              memberId: 'm3',
+              collaborators: [],
+              project: '内部系统升级',
+              title: '系统接口权限申请与联调',
+              startDate: '2026-11-13',
+              endDate: '2026-11-14',
+              hoursPerDay: 1.5,
+              status: 'blocked',
+              source: 'self',
+              priority: 'high',
+              note: '⚠️ 卡点：运维部门一直没批权限，需要负责人帮忙催一下'
+            }
+          },
+          {
+            trashType: 'task',
+            deletedAt: '2026/11/13 11:16:21',
+            data: {
+              id: 't4',
+              memberId: 'm2',
+              collaborators: [],
+              project: '日常运营维护',
+              title: '协助修改宣传物料文案',
+              startDate: '2026-11-13',
+              endDate: '2026-11-13',
+              hoursPerDay: 4,
+              status: 'doing',
+              source: 'self',
+              priority: 'normal',
+              note: '成员自建：市场部临时找过来帮忙'
+            }
+          },
+          {
+            trashType: 'task',
+            deletedAt: '2026/11/13 11:16:19',
+            data: {
+              id: 't6',
+              memberId: 'm3',
+              collaborators: ['m2'],
+              project: '重点项目A',
+              title: '搭建内部数据统计自动化报表',
+              startDate: '2026-11-12',
+              endDate: '2026-11-15',
+              hoursPerDay: 6,
+              status: 'doing',
+              source: 'assigned',
+              priority: 'high',
+              note: '小李主负责，小王配合核对字段'
+            }
+          },
+          {
+            trashType: 'task',
+            deletedAt: '2026/11/13 11:16:17',
+            data: {
+              id: 't3',
+              memberId: 'm2',
+              collaborators: [],
+              project: '重点项目A',
+              title: '新项目执行方案初稿撰写',
+              startDate: '2026-11-12',
+              endDate: '2026-11-14',
+              hoursPerDay: 5,
+              status: 'doing',
+              source: 'assigned',
+              priority: 'high',
+              note: '负责人指派：需要包含竞品对比数据'
+            }
+          },
+          {
+            trashType: 'task',
+            deletedAt: '2026/11/13 11:16:13',
+            data: {
+              id: 't1',
+              memberId: 'm1',
+              collaborators: ['m4'],
+              project: '大客户B专项',
+              title: '制定部门重点计划 & 客户合同终审',
+              startDate: '2026-11-13',
+              endDate: '2026-11-14',
+              hoursPerDay: 3,
+              status: 'doing',
+              source: 'self',
+              priority: 'high',
+              note: '带小张一起对接客户B'
+            }
+          }
+        ],
         projectOptions: [
-          '重点项目A',
-          '大客户B专项',
-          '内部系统升级',
-          '日常运营维护',
-          '部门统筹管理'
+          '王桥项目',
+          '沉湖下红星垸鸟类栖息地修复项目',
+          '萤火虫科技项目',
+          '尚湖景观提升项目',
+          '腾讯小微湿地项目',
+          '包头三北项目-赛罕塔拉片区',
+          '雅尼项目'
         ],
         workContentOptions: [
-          '制定部门重点计划 & 客户合同终审',
-          '新项目执行方案初稿撰写',
-          '协助修改宣传物料文案',
-          '搭建内部数据统计自动化报表',
-          '系统接口权限申请与联调',
-          '日常客户群答疑与周报汇总',
-          '需求调研与原型设计',
-          '项目进度复盘与汇报会议'
+          '苗木种植',
+          '概念方案设计',
+          '材料整合上传',
+          '消落带，汇口图纸',
+          '项目变更材料',
+          'cad图纸绘制',
+          '文本编制'
         ],
         members: [
-          { id: 'm1', name: '我 (负责人)', role: '项目总负责 / 统筹', capacity: 8, color: 'indigo', isBoss: true, active: true },
-          { id: 'm2', name: '成员A (小王)', role: '项目成员 · 方案执行', capacity: 8, color: 'emerald', isBoss: false, active: true },
-          { id: 'm3', name: '成员B (小李)', role: '项目成员 · 技术落地', capacity: 8, color: 'blue', isBoss: false, active: true },
-          { id: 'm4', name: '成员C (小张)', role: '项目成员 · 运营对接', capacity: 8, color: 'amber', isBoss: false, active: true }
+          { id: 'm1', name: 'CJ', role: '项目负责', capacity: 8, color: 'indigo', isBoss: true, active: true },
+          { id: 'm2', name: 'WMZ', role: '项目成员', capacity: 8, color: 'emerald', isBoss: false, active: true },
+          { id: 'm3', name: 'YZ', role: '项目成员', capacity: 8, color: 'blue', isBoss: false, active: true },
+          { id: 'm4', name: 'HG', role: '项目成员', capacity: 8, color: 'amber', isBoss: false, active: true }
         ],
         tasks: [
           {
-            id: 't1',
+            id: 't_1794540405954',
+            project: '雅尼项目',
+            title: '文本编制',
             memberId: 'm1',
-            collaborators: ['m4'],
-            project: '大客户B专项',
-            title: '制定部门重点计划 & 客户合同终审',
-            startDate: today,
-            endDate: addDays(today, 1),
-            hoursPerDay: 3,
-            status: 'doing',
+            collaborators: ['m3', 'm4'],
             source: 'self',
-            priority: 'high',
-            note: '带小张一起对接客户B'
-          },
-          {
-            id: 't3',
-            memberId: 'm2',
-            collaborators: [],
-            project: '重点项目A',
-            title: '新项目执行方案初稿撰写',
-            startDate: addDays(today, -1),
-            endDate: addDays(today, 1),
-            hoursPerDay: 5,
+            startDate: '2026-11-13',
+            endDate: '2026-11-13',
+            hoursPerDay: 8,
             status: 'doing',
-            source: 'assigned',
-            priority: 'high',
-            note: '负责人指派：需要包含竞品对比数据'
-          },
-          {
-            id: 't4',
-            memberId: 'm2',
-            collaborators: [],
-            project: '日常运营维护',
-            title: '协助修改宣传物料文案',
-            startDate: today,
-            endDate: today,
-            hoursPerDay: 4,
-            status: 'doing',
-            source: 'self',
             priority: 'normal',
-            note: '成员自建：市场部临时找过来帮忙'
+            note: ''
           },
           {
-            id: 't6',
-            memberId: 'm3',
-            collaborators: ['m2'],
-            project: '重点项目A',
-            title: '搭建内部数据统计自动化报表',
-            startDate: addDays(today, -1),
-            endDate: addDays(today, 2),
-            hoursPerDay: 6,
-            status: 'doing',
-            source: 'assigned',
-            priority: 'high',
-            note: '小李主负责，小王配合核对字段'
-          },
-          {
-            id: 't7',
+            id: 't_1794540632610',
+            project: '雅尼项目',
+            title: '消落带，汇口图纸',
             memberId: 'm3',
             collaborators: [],
-            project: '内部系统升级',
-            title: '系统接口权限申请与联调',
-            startDate: today,
-            endDate: addDays(today, 1),
-            hoursPerDay: 1.5,
-            status: 'blocked',
-            source: 'self',
-            priority: 'high',
-            note: '⚠️ 卡点：运维部门一直没批权限，需要负责人帮忙催一下'
+            source: 'assigned',
+            startDate: '2026-11-16',
+            endDate: '2026-11-20',
+            hoursPerDay: 8,
+            status: 'todo',
+            priority: 'normal',
+            note: ''
           },
           {
-            id: 't8',
+            id: 't_1794540677108',
+            project: '萤火虫科技项目',
+            title: '材料整合上传',
+            memberId: 'm1',
+            collaborators: [],
+            source: 'self',
+            startDate: '2026-11-16',
+            endDate: '2026-11-16',
+            hoursPerDay: 2,
+            status: 'doing',
+            priority: 'normal',
+            note: ''
+          },
+          {
+            id: 't_1794540688058',
+            project: '包头三北项目-赛罕塔拉片区',
+            title: '项目变更材料',
+            memberId: 'm1',
+            collaborators: [],
+            source: 'self',
+            startDate: '2026-11-16',
+            endDate: '2026-11-16',
+            hoursPerDay: 2,
+            status: 'todo',
+            priority: 'normal',
+            note: ''
+          },
+          {
+            id: 't_1794540777594',
+            project: '腾讯小微湿地项目',
+            title: '概念方案设计',
+            memberId: 'm1',
+            collaborators: [],
+            source: 'self',
+            startDate: '2026-11-16',
+            endDate: '2026-11-16',
+            hoursPerDay: 4,
+            status: 'todo',
+            priority: 'normal',
+            note: ''
+          },
+          {
+            id: 't_1794540797513',
+            project: '腾讯小微湿地项目',
+            title: '概念方案设计',
+            memberId: 'm1',
+            collaborators: [],
+            source: 'self',
+            startDate: '2026-11-17',
+            endDate: '2026-11-20',
+            hoursPerDay: 8,
+            status: 'todo',
+            priority: 'normal',
+            note: ''
+          },
+          {
+            id: 't_1794540845194',
+            project: '尚湖景观提升项目',
+            title: '苗木种植',
+            memberId: 'm1',
+            collaborators: [],
+            source: 'self',
+            startDate: '2026-11-23',
+            endDate: '2026-11-24',
+            hoursPerDay: 8,
+            status: 'todo',
+            priority: 'normal',
+            note: ''
+          },
+          {
+            id: 't_1794550723707',
+            project: '沉湖下红星垸鸟类栖息地修复项目',
+            title: 'cad图纸绘制',
+            memberId: 'm2',
+            collaborators: [],
+            source: 'assigned',
+            startDate: '2026-11-13',
+            endDate: '2026-11-13',
+            hoursPerDay: 2,
+            status: 'doing',
+            priority: 'normal',
+            note: ''
+          },
+          {
+            id: 't_1794550792419',
+            project: '王桥项目',
+            title: 'cad图纸绘制',
+            memberId: 'm2',
+            collaborators: [],
+            source: 'assigned',
+            startDate: '2026-11-16',
+            endDate: '2026-11-16',
+            hoursPerDay: 8,
+            status: 'todo',
+            priority: 'normal',
+            note: ''
+          },
+          {
+            id: 't_1794550800915',
+            project: '王桥项目',
+            title: 'cad图纸绘制',
+            memberId: 'm2',
+            collaborators: [],
+            source: 'assigned',
+            startDate: '2026-11-17',
+            endDate: '2026-11-17',
+            hoursPerDay: 8,
+            status: 'todo',
+            priority: 'normal',
+            note: ''
+          },
+          {
+            id: 't_1794793219672',
+            project: '雅尼项目',
+            title: '文本编制',
             memberId: 'm4',
             collaborators: [],
-            project: '日常运营维护',
-            title: '日常客户群答疑与周报汇总',
-            startDate: today,
-            endDate: addDays(today, 4),
-            hoursPerDay: 2.5,
-            status: 'doing',
-            source: 'self',
+            source: 'assigned',
+            startDate: '2026-11-16',
+            endDate: '2026-11-20',
+            hoursPerDay: 8,
+            status: 'todo',
             priority: 'normal',
-            note: '每天固定例行工作'
+            note: ''
           }
         ]
       };
     }
+
+    let loadedFromLegacyDemo = false;
 
     let state = loadState();
     let undoTimer = null;
@@ -1073,26 +1258,28 @@
     }
 
     async function pullFromGitHubCloud(showNotice = false) {
-      if (!cloudConfig || !cloudConfig.owner || !cloudConfig.repo || !cloudConfig.token) return;
-      isSyncingCloud = true;
-      updateCloudStatusBadge('拉取云端...', 'syncing');
+      const owner = cloudConfig?.owner || DEFAULT_GH_OWNER;
+      const repo = cloudConfig?.repo || DEFAULT_GH_REPO;
+      const branch = cloudConfig?.branch || DEFAULT_GH_BRANCH;
+      if (!owner || !repo) return;
 
-      const branch = cloudConfig.branch || 'main';
-      const url = `https://api.github.com/repos/${cloudConfig.owner}/${cloudConfig.repo}/contents/data.json?ref=${encodeURIComponent(branch)}&_t=${Date.now()}`;
+      const hasToken = !!(cloudConfig && cloudConfig.token);
+      isSyncingCloud = true;
+      if (hasToken) updateCloudStatusBadge('拉取云端...', 'syncing');
+
+      const url = `https://api.github.com/repos/${owner}/${repo}/contents/data.json?ref=${encodeURIComponent(branch)}&_t=${Date.now()}`;
+      const headers = { 'Accept': 'application/vnd.github.v3+json' };
+      if (hasToken) headers['Authorization'] = `token ${cloudConfig.token}`;
 
       try {
-        const res = await fetch(url, {
-          headers: {
-            'Authorization': `token ${cloudConfig.token}`,
-            'Accept': 'application/vnd.github.v3+json'
-          }
-        });
+        const res = await fetch(url, { headers });
 
         if (res.status === 404) {
-          // data.json doesn't exist yet on GitHub -> initialize it with current local state
           isSyncingCloud = false;
-          await pushToGitHubCloud(false);
-          if (showNotice) alert('✅ 云端首次初始化完成！已将当前排期数据上传至 GitHub 仓库 data.json。');
+          if (hasToken) {
+            await pushToGitHubCloud(false);
+            if (showNotice) alert('✅ 云端首次初始化完成！已将当前排期数据上传至 GitHub 仓库 data.json。');
+          }
           return;
         }
 
@@ -1123,16 +1310,20 @@
         }
 
         const timeStr = new Date().toLocaleTimeString('zh-CN', { hour12: false });
-        updateCloudStatusBadge('云端已同步', 'ok');
+        if (hasToken) {
+          updateCloudStatusBadge('云端已同步', 'ok');
+        } else {
+          updateCloudStatusBadge();
+        }
         const statusEl = document.getElementById('ghLastSyncTimeText');
-        if (statusEl) statusEl.textContent = `✅ 最近云端同步成功：${timeStr}`;
+        if (statusEl) statusEl.textContent = `✅ 最近云端拉取成功：${timeStr}`;
         if (showNotice) alert('✅ 已从 GitHub 云端拉取最新团队排期数据！');
       } catch (err) {
         console.error('GitHub Cloud Pull Error:', err);
-        updateCloudStatusBadge('云同步异常', 'error');
+        if (hasToken) updateCloudStatusBadge('云同步异常', 'error');
         const statusEl = document.getElementById('ghLastSyncTimeText');
-        if (statusEl) statusEl.textContent = `❌ 同步失败：请检查用户名、仓库名或 Token 权限 (${err.message})`;
-        if (showNotice) alert(`❌ 从 GitHub 拉取失败 (${err.message})，请检查配置是否正确。`);
+        if (statusEl) statusEl.textContent = `❌ 同步失败：请检查网络连接或 Token 权限 (${err.message})`;
+        if (showNotice) alert(`❌ 从 GitHub 拉取失败 (${err.message})，请检查网络或配置是否正确。`);
       } finally {
         isSyncingCloud = false;
       }
@@ -1218,9 +1409,9 @@
 
     function openCloudSyncModal() {
       const modal = document.getElementById('cloudSyncModal');
-      // Auto-detect owner & repo if hosted on github.io
-      let defaultOwner = '';
-      let defaultRepo = '';
+      // Auto-detect owner & repo if hosted on github.io, otherwise pre-fill default team repo
+      let defaultOwner = DEFAULT_GH_OWNER;
+      let defaultRepo = DEFAULT_GH_REPO;
       if (window.location.hostname.endsWith('.github.io')) {
         defaultOwner = window.location.hostname.split('.')[0];
         const pathParts = window.location.pathname.split('/').filter(Boolean);
@@ -1230,7 +1421,7 @@
       document.getElementById('ghOwnerInput').value = cloudConfig?.owner || defaultOwner;
       document.getElementById('ghRepoInput').value = cloudConfig?.repo || defaultRepo;
       document.getElementById('ghTokenInput').value = cloudConfig?.token || '';
-      document.getElementById('ghBranchInput').value = cloudConfig?.branch || 'main';
+      document.getElementById('ghBranchInput').value = cloudConfig?.branch || DEFAULT_GH_BRANCH;
 
       renderTeamShareLinkBox();
       modal.classList.remove('hidden');
@@ -1287,12 +1478,24 @@
       closeCloudSyncModal();
     }
 
+    function isLegacyPlaceholderDemo(parsed) {
+      if (!parsed || !Array.isArray(parsed.members)) return false;
+      const hasFakeDemoNames = parsed.members.some(m => m.name === '我 (负责人)' || m.name === '成员A (小王)');
+      const hasRealTeamNames = parsed.members.some(m => ['CJ', 'WMZ', 'YZ', 'HG'].includes(m.name));
+      return hasFakeDemoNames && !hasRealTeamNames;
+    }
+
     function loadState() {
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (raw) {
           const parsed = JSON.parse(raw);
           if (parsed && Array.isArray(parsed.members) && Array.isArray(parsed.tasks)) {
+            // Auto-recover if local file:// previously cached the generic template demo data
+            if (isLegacyPlaceholderDemo(parsed)) {
+              loadedFromLegacyDemo = true;
+              return getInitialDemoData();
+            }
             if (!Array.isArray(parsed.projectOptions)) parsed.projectOptions = getInitialDemoData().projectOptions;
             if (!Array.isArray(parsed.workContentOptions)) parsed.workContentOptions = getInitialDemoData().workContentOptions;
             if (!Array.isArray(parsed.trash)) parsed.trash = [];
@@ -3067,7 +3270,7 @@
     window.addEventListener('DOMContentLoaded', async () => {
       checkAccessOnLoad();
       updateCloudStatusBadge();
-      const hadLocalData = !!localStorage.getItem(STORAGE_KEY);
+      const hadLocalData = !!localStorage.getItem(STORAGE_KEY) && !loadedFromLegacyDemo;
       renderAll();
 
       if (cloudConfig && cloudConfig.token) {
@@ -3081,19 +3284,8 @@
           }
         }, 45000);
       } else if (!hadLocalData) {
-        // Fallback: if opened on GitHub Pages or local HTTP server without localStorage yet, load bundled data.json
-        try {
-          const res = await fetch(`./data.json?_t=${Date.now()}`);
-          if (res.ok) {
-            const bundled = await res.json();
-            if (bundled && Array.isArray(bundled.members) && Array.isArray(bundled.tasks)) {
-              state = bundled;
-              renderAll();
-            }
-          }
-        } catch (_) {
-          // Ignore fetch error when opened directly via file://
-        }
+        // Pull latest data.json from GitHub public API (works even when opened via local file://)
+        pullFromGitHubCloud(false);
       }
     });
   </script>

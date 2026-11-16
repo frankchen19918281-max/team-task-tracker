@@ -318,6 +318,20 @@
       "status": "todo",
       "priority": "normal",
       "note": ""
+    },
+    {
+      "id": "t_1794793219672",
+      "project": "雅尼项目",
+      "title": "文本编制",
+      "memberId": "m4",
+      "collaborators": [],
+      "source": "assigned",
+      "startDate": "2026-11-16",
+      "endDate": "2026-11-20",
+      "hoursPerDay": 8,
+      "status": "todo",
+      "priority": "normal",
+      "note": ""
     }
   ]
 }

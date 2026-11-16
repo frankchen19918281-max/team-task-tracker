@@ -38,6 +38,12 @@
       opacity: 1;
     }
     /* When exporting image, hide interactive hints & expand full table cleanly */
+    .export-only {
+      display: none;
+    }
+    .exporting-snapshot .export-only {
+      display: inline-flex !important;
+    }
     .exporting-snapshot .no-export,
     .exporting-snapshot .add-btn-hint,
     .exporting-snapshot .edit-hint-icon {
@@ -48,6 +54,16 @@
     }
     .exporting-snapshot .overflow-x-auto {
       overflow: visible !important;
+    }
+    /* Hide native number input arrows for compact inline hours editor */
+    .day-hours-input::-webkit-outer-spin-button,
+    .day-hours-input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    .day-hours-input {
+      -moz-appearance: textfield;
+      appearance: textfield;
     }
   </style>
 </head>
@@ -278,7 +294,7 @@
       <div class="px-4 py-2.5 bg-slate-50/80 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
         <div class="flex flex-wrap items-center gap-4">
           <span class="font-medium text-slate-700">
-            <i class="fa-solid fa-camera text-emerald-600 mr-1"></i>提示：点击右上角绿色<b>【生成汇报图片】</b>按钮，可将完整排期表一键保存为高清图片发给领导。
+            <i class="fa-solid fa-sliders text-indigo-600 mr-1"></i>提示：面板卡片上可直接用 <b>− / + 或输入数字</b> 单独修改任意一天的项目时长，点击 <b>【已完成】</b> 勾选后当日总时长保持不变。
           </span>
         </div>
         <div class="flex flex-wrap items-center gap-3">
@@ -464,10 +480,10 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-3.5 rounded-xl border border-slate-200/80">
           <div>
             <label class="block text-xs font-semibold text-slate-700 mb-1">
-              预计每天投入工时 (小时/天) <span class="text-rose-500">*</span>
+              预计每天投入工时 (默认小时/天) <span class="text-rose-500">*</span>
             </label>
             <div class="flex items-center gap-2">
-              <input type="number" id="taskHoursPerDayInput" min="0.5" max="16" step="0.5" value="2" required oninput="updateWorkloadPreview()"
+              <input type="number" id="taskHoursPerDayInput" min="0" max="24" step="0.5" value="2" required oninput="updateWorkloadPreview()"
                 class="w-20 px-2.5 py-1.5 rounded-lg border border-slate-300 focus:border-indigo-500 outline-none font-semibold text-indigo-600">
               <div class="flex gap-1 flex-wrap">
                 <button type="button" onclick="setQuickHours(1)" class="px-2 py-1 text-xs rounded bg-white border border-slate-200 hover:bg-slate-100 cursor-pointer">1h</button>
@@ -485,7 +501,7 @@
               <option value="todo">⏳ 待开始</option>
               <option value="doing">🚀 进行中</option>
               <option value="blocked">⚠️ 卡点/等待协调 (标红提醒)</option>
-              <option value="done">✅ 已完成 (不再占用负荷)</option>
+              <option value="done">✅ 已完成 (计入当日总时长)</option>
             </select>
             <div class="mt-2 flex items-center gap-2">
               <label class="text-xs text-slate-600">优先级:</label>
@@ -495,6 +511,10 @@
                 <option value="low">⚪ 低优/可顺延</option>
               </select>
             </div>
+          </div>
+
+          <!-- Per-day Hours & Completion Breakdown (auto-shown for multi-day tasks) -->
+          <div id="modalDailyHoursBox" class="hidden sm:col-span-2 pt-2.5 border-t border-slate-200/80 space-y-2">
           </div>
         </div>
 
@@ -1191,6 +1211,7 @@
       if (cloudPushTimer) clearTimeout(cloudPushTimer);
       updateCloudStatusBadge('待同步...', 'syncing');
       cloudPushTimer = setTimeout(() => {
+        cloudPushTimer = null;
         pushToGitHubCloud(false);
       }, 900);
     }
@@ -1312,6 +1333,130 @@
       return false;
     }
 
+    function getTaskDateList(startDate, endDate) {
+      if (!startDate || !endDate || endDate < startDate) return [];
+      const dates = [];
+      let cur = startDate;
+      let guard = 0;
+      while (cur <= endDate && guard < 366) {
+        dates.push(cur);
+        cur = addDays(cur, 1);
+        guard++;
+      }
+      return dates;
+    }
+
+    function getTaskHoursOnDate(task, dateStr) {
+      if (task.dailyHours && typeof task.dailyHours === 'object' && Object.prototype.hasOwnProperty.call(task.dailyHours, dateStr)) {
+        const customH = Number(task.dailyHours[dateStr]);
+        return Number.isFinite(customH) && customH >= 0 ? Math.round(customH * 10) / 10 : 0;
+      }
+      const baseH = Number(task.hoursPerDay);
+      return Number.isFinite(baseH) && baseH >= 0 ? Math.round(baseH * 10) / 10 : 0;
+    }
+
+    function isTaskDoneOnDate(task, dateStr) {
+      if (task.status === 'done') return true;
+      if (task.dailyDone && typeof task.dailyDone === 'object' && task.dailyDone[dateStr]) {
+        return true;
+      }
+      return false;
+    }
+
+    function getTaskTotalHours(task) {
+      const dates = getTaskDateList(task.startDate, task.endDate);
+      if (dates.length === 0) return Number(task.hoursPerDay) || 0;
+      const sum = dates.reduce((acc, d) => acc + getTaskHoursOnDate(task, d), 0);
+      return Math.round(sum * 10) / 10;
+    }
+
+    function setTaskDayHoursValue(task, dateStr, rawHours) {
+      let val = Number(rawHours);
+      if (!Number.isFinite(val) || val < 0) val = 0;
+      if (val > 24) val = 24;
+      val = Math.round(val * 10) / 10;
+
+      if (task.startDate === task.endDate) {
+        task.hoursPerDay = val;
+        if (task.dailyHours) delete task.dailyHours;
+      } else {
+        if (!task.dailyHours || typeof task.dailyHours !== 'object') {
+          task.dailyHours = {};
+        }
+        if (val === Math.round((Number(task.hoursPerDay) || 0) * 10) / 10) {
+          delete task.dailyHours[dateStr];
+        } else {
+          task.dailyHours[dateStr] = val;
+        }
+        if (Object.keys(task.dailyHours).length === 0) {
+          delete task.dailyHours;
+        }
+      }
+    }
+
+    function updateTaskDayHours(taskId, dateStr, newVal, event) {
+      if (event) event.stopPropagation();
+      const task = state.tasks.find(t => t.id === taskId);
+      if (!task) return;
+      setTaskDayHoursValue(task, dateStr, newVal);
+      renderAll();
+    }
+
+    function stepTaskDayHours(taskId, dateStr, direction, event) {
+      if (event) event.stopPropagation();
+      const task = state.tasks.find(t => t.id === taskId);
+      if (!task) return;
+      const cur = getTaskHoursOnDate(task, dateStr);
+      const next = Math.max(0, Math.min(24, Math.round((cur + direction * 0.5) * 10) / 10));
+      setTaskDayHoursValue(task, dateStr, next);
+      renderAll();
+    }
+
+    function toggleTaskDayDone(taskId, dateStr, event) {
+      if (event) event.stopPropagation();
+      const task = state.tasks.find(t => t.id === taskId);
+      if (!task) return;
+
+      const currentlyDone = isTaskDoneOnDate(task, dateStr);
+
+      if (task.startDate === task.endDate) {
+        if (!currentlyDone) {
+          task.prevStatus = task.status !== 'done' ? task.status : 'doing';
+          task.status = 'done';
+        } else {
+          task.status = (task.prevStatus && task.prevStatus !== 'done') ? task.prevStatus : 'doing';
+        }
+        if (task.dailyDone) delete task.dailyDone;
+      } else {
+        const allDates = getTaskDateList(task.startDate, task.endDate);
+        if (!task.dailyDone || typeof task.dailyDone !== 'object') {
+          task.dailyDone = {};
+        }
+
+        if (task.status === 'done') {
+          // Was completely done; uncheck only this specific day
+          allDates.forEach(d => { task.dailyDone[d] = true; });
+          delete task.dailyDone[dateStr];
+          task.status = (task.prevStatus && task.prevStatus !== 'done') ? task.prevStatus : 'doing';
+        } else if (!currentlyDone) {
+          task.dailyDone[dateStr] = true;
+          const allDoneNow = allDates.length > 0 && allDates.every(d => !!task.dailyDone[d]);
+          if (allDoneNow) {
+            task.prevStatus = task.status !== 'done' ? task.status : 'doing';
+            task.status = 'done';
+          }
+        } else {
+          delete task.dailyDone[dateStr];
+        }
+
+        if (task.dailyDone && Object.keys(task.dailyDone).length === 0) {
+          delete task.dailyDone;
+        }
+      }
+
+      renderAll();
+    }
+
     function getMemberDayStats(memberId, dateStr) {
       const dayTasks = state.tasks.filter(t =>
         isMemberInvolvedInTask(memberId, t) &&
@@ -1324,8 +1469,8 @@
       let hasBlocked = false;
 
       dayTasks.forEach(t => {
-        const h = Number(t.hoursPerDay) || 0;
-        if (t.status === 'done') {
+        const h = getTaskHoursOnDate(t, dateStr);
+        if (isTaskDoneOnDate(t, dateStr)) {
           doneHours += h;
         } else {
           activeHours += h;
@@ -1522,9 +1667,9 @@
 
       activeMembers.forEach(m => {
         const stats = getMemberDayStats(m.id, today);
-        if (stats.activeHours < m.capacity * 0.75) {
+        if (stats.totalHours < m.capacity * 0.75) {
           availableCount++;
-        } else if (stats.activeHours > m.capacity) {
+        } else if (stats.totalHours > m.capacity) {
           overloadCount++;
         }
       });
@@ -1590,7 +1735,7 @@
           : (d.isWeekend ? 'bg-slate-100/70 text-slate-500' : 'text-slate-700');
 
         headerHtml += `
-          <th class="px-2.5 py-2.5 min-w-[155px] border-r border-slate-200/80 text-center ${todayHighlight}">
+          <th class="px-2.5 py-2.5 min-w-[168px] border-r border-slate-200/80 text-center ${todayHighlight}">
             <div class="flex items-center justify-center gap-1 text-xs font-bold">
               <span>${d.monthDay}</span>
               <span class="text-[11px] font-normal ${d.isToday ? 'bg-indigo-600 text-white px-1.5 py-0.2 rounded-full' : 'text-slate-400'}">
@@ -1608,7 +1753,7 @@
       if (filterFreeOnly) {
         activeMembers = activeMembers.filter(m => {
           const st = getMemberDayStats(m.id, today);
-          return st.activeHours < m.capacity;
+          return st.totalHours < m.capacity;
         });
       }
 
@@ -1626,7 +1771,7 @@
       let bodyHtml = '';
       activeMembers.forEach(member => {
         const todayStats = getMemberDayStats(member.id, today);
-        const todayBadge = getLoadBadgeStyle(todayStats.activeHours, member.capacity);
+        const todayBadge = getLoadBadgeStyle(todayStats.totalHours, member.capacity);
         const avatarClass = COLOR_MAP[member.color] || COLOR_MAP.indigo;
 
         bodyHtml += `<tr class="group transition-colors">`;
@@ -1661,29 +1806,32 @@
         // Date Cells
         dates.forEach(d => {
           const dayStats = getMemberDayStats(member.id, d.dateStr);
-          const loadStyle = getLoadBadgeStyle(dayStats.activeHours, member.capacity);
-          const ratioPct = Math.min(100, Math.round((dayStats.activeHours / member.capacity) * 100));
+          const loadStyle = getLoadBadgeStyle(dayStats.totalHours, member.capacity);
+          const ratioPct = Math.min(100, Math.round((dayStats.totalHours / member.capacity) * 100));
 
-          const weekendBg = d.isWeekend && dayStats.activeHours === 0 ? 'bg-slate-50/50' : loadStyle.cellBg;
+          const weekendBg = d.isWeekend && dayStats.totalHours === 0 ? 'bg-slate-50/50' : loadStyle.cellBg;
           const todayBorder = d.isToday ? 'ring-1 ring-inset ring-indigo-500/30' : '';
+          const cellHoursTooltip = dayStats.totalHours > 0
+            ? `当日总时长 ${dayStats.totalHours}h（已完成 ${dayStats.doneHours}h / 未完成 ${dayStats.activeHours}h）`
+            : '当日暂无排期任务';
 
           bodyHtml += `
             <td onclick="handleCellClick('${member.id}', '${d.dateStr}', event)"
                 class="p-2 border-r border-slate-200/70 align-top min-h-[110px] cursor-pointer hover:bg-indigo-50/30 transition relative cell-hover ${weekendBg} ${todayBorder}">
               
-              <!-- Cell Header: Load Progress Bar & Hours -->
-              <div class="flex items-center justify-between gap-1 mb-1.5">
+              <!-- Cell Header: Load Progress Bar & Total Hours (unchanged when tasks marked done) -->
+              <div class="flex items-center justify-between gap-1 mb-1.5" title="${cellHoursTooltip}">
                 <div class="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                   <div class="h-full ${loadStyle.barColor} transition-all duration-300" style="width: ${ratioPct}%"></div>
                 </div>
-                <span class="text-[11px] font-medium ${dayStats.activeHours > member.capacity ? 'text-rose-600 font-bold' : (dayStats.activeHours > 0 ? 'text-slate-600' : 'text-slate-300')}">
-                  ${dayStats.activeHours}h/${member.capacity}h
+                <span class="text-[11px] font-medium ${dayStats.totalHours > member.capacity ? 'text-rose-600 font-bold' : (dayStats.totalHours > 0 ? 'text-slate-600' : 'text-slate-300')}">
+                  ${dayStats.totalHours}h/${member.capacity}h
                 </span>
               </div>
 
               <!-- Task Pills inside the cell -->
               <div class="space-y-1.5">
-                ${dayStats.tasks.map(task => renderMatrixTaskPill(task, member.id)).join('')}
+                ${dayStats.tasks.map(task => renderMatrixTaskPill(task, member.id, d.dateStr)).join('')}
               </div>
 
               <!-- Hover "+ 记任务" hint -->
@@ -1702,14 +1850,19 @@
       tbody.innerHTML = bodyHtml;
     }
 
-    function renderMatrixTaskPill(task, currentRowMemberId) {
-      const isDone = task.status === 'done';
-      const isBlocked = task.status === 'blocked';
+    function renderMatrixTaskPill(task, currentRowMemberId, dateStr) {
+      const isDone = isTaskDoneOnDate(task, dateStr);
+      const isBlocked = !isDone && task.status === 'blocked';
       const isCollaborator = task.memberId !== currentRowMemberId;
+      const dayHours = getTaskHoursOnDate(task, dateStr);
+      const isMultiDay = task.startDate !== task.endDate;
+      const hasCustomDayHours = isMultiDay && task.dailyHours &&
+        Object.prototype.hasOwnProperty.call(task.dailyHours, dateStr) &&
+        Math.round((Number(task.dailyHours[dateStr]) || 0) * 10) / 10 !== Math.round((Number(task.hoursPerDay) || 0) * 10) / 10;
 
       let cardStyle = 'bg-white border-slate-200 text-slate-700 hover:border-indigo-400';
       if (isDone) {
-        cardStyle = 'bg-slate-50 border-slate-200/70 text-slate-400 line-through opacity-75';
+        cardStyle = 'bg-emerald-50/40 border-emerald-200/90 text-slate-600 hover:border-emerald-400';
       } else if (isBlocked) {
         cardStyle = 'bg-rose-50 border-rose-300 text-rose-800 ring-1 ring-rose-200';
       } else if (task.priority === 'high') {
@@ -1717,7 +1870,7 @@
       }
 
       const projectBadge = task.project
-        ? `<div class="text-[10px] font-semibold text-indigo-600 bg-indigo-50/80 px-1.5 py-0.2 rounded border border-indigo-100 inline-block mb-1 max-w-full truncate">📁 ${escapeHtml(task.project)}</div>`
+        ? `<div class="text-[10px] font-semibold ${isDone ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-indigo-600 bg-indigo-50/80 border-indigo-100'} px-1.5 py-0.2 rounded border inline-block mb-1 max-w-full truncate">📁 ${escapeHtml(task.project)}</div>`
         : '';
 
       const roleHintBadge = isCollaborator
@@ -1728,7 +1881,7 @@
 
       const statusIcon = isBlocked
         ? '<i class="fa-solid fa-triangle-exclamation text-rose-600 text-[11px] shrink-0" title="卡点求助"></i>'
-        : (isDone ? '<i class="fa-solid fa-circle-check text-emerald-500 text-[11px] shrink-0"></i>' : '');
+        : (isDone ? '<i class="fa-solid fa-circle-check text-emerald-500 text-[11px] shrink-0" title="当日已完成"></i>' : '');
 
       const activeMembers = state.members.filter(m => m.active !== false);
       const ownerOptions = activeMembers.map(m =>
@@ -1739,24 +1892,57 @@
 
       return `
         <div onclick="openTaskModal('${task.id}', event)"
-             class="p-1.5 rounded-lg border text-xs transition hover:shadow-xs ${cardStyle}">
+             class="task-pill-card p-1.5 rounded-lg border text-xs transition hover:shadow-xs ${cardStyle}">
           ${projectBadge}
           <div class="flex items-start justify-between gap-1">
-            <span class="font-medium leading-snug break-all line-clamp-2">${escapeHtml(task.title)}</span>
+            <span class="font-medium leading-snug break-all line-clamp-2 ${isDone ? 'line-through decoration-emerald-500/60 text-slate-500' : ''}">${escapeHtml(task.title)}</span>
             ${statusIcon}
           </div>
 
-          <div class="flex items-center justify-between gap-1 mt-1.5 pt-1 border-t border-slate-100/80 text-[10px]">
-            <div class="flex items-center gap-1 min-w-0" onclick="event.stopPropagation()">
+          <div class="flex items-center justify-between gap-1 mt-1.5 pt-1 border-t border-slate-100/80 text-[10px]" onclick="event.stopPropagation()">
+            <div class="flex items-center gap-1 min-w-0">
               ${roleHintBadge}
               <select onchange="quickChangeTaskOwner('${task.id}', this.value, event)"
                       title="直接点击切换该任务的负责人"
-                      class="bg-transparent text-[10px] text-slate-600 hover:text-indigo-600 font-medium focus:outline-none cursor-pointer truncate max-w-[78px]">
+                      class="bg-transparent text-[10px] text-slate-600 hover:text-indigo-600 font-medium focus:outline-none cursor-pointer truncate max-w-[82px]">
                 ${ownerOptions}
               </select>
-              ${collabCount > 0 ? `<span class="text-[10px] text-purple-600 font-medium" title="还有${collabCount}位项目成员共同参与">+${collabCount}人</span>` : ''}
+              ${collabCount > 0 ? `<span class="text-[10px] text-purple-600 font-medium shrink-0" title="还有${collabCount}位项目成员共同参与">+${collabCount}人</span>` : ''}
             </div>
-            <span class="font-semibold shrink-0 ${isDone ? 'text-slate-400' : 'text-indigo-600'}">${task.hoursPerDay}h</span>
+          </div>
+
+          <!-- Inline Day Completion Option + Inline Day Hours Control -->
+          <div class="flex items-center justify-between gap-1 mt-1 pt-1 border-t border-slate-100/80 text-[10px]" onclick="event.stopPropagation()">
+            <button type="button"
+              onclick="toggleTaskDayDone('${task.id}', '${dateStr}', event)"
+              title="${isDone ? '已完成（点击取消完成状态，总时长不变）' : '点击标记已完成（当日总时长保持不变）'}"
+              class="no-export inline-flex items-center gap-1 px-1.5 py-0.5 rounded border transition cursor-pointer shrink-0 ${
+                isDone
+                  ? 'bg-emerald-100/80 border-emerald-300 text-emerald-700 font-semibold hover:bg-emerald-200/70'
+                  : 'bg-slate-50 border-slate-200 text-slate-500 font-medium hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700'
+              }">
+              <i class="${isDone ? 'fa-solid fa-square-check text-emerald-600' : 'fa-regular fa-square'} text-[10px]"></i>
+              <span>已完成</span>
+            </button>
+            ${isDone
+              ? '<span class="export-only items-center gap-0.5 text-[10px] font-semibold text-emerald-600"><i class="fa-solid fa-circle-check text-[10px]"></i>已完成</span>'
+              : '<span class="export-only text-[10px] text-slate-400">进行中</span>'}
+
+            <div class="no-export inline-flex items-center rounded border ${hasCustomDayHours ? 'border-amber-300 bg-amber-50/70' : 'border-slate-200 bg-white'} overflow-hidden shrink-0"
+                 title="${isMultiDay ? `直接修改 ${dateStr.slice(5)} 当天时长（仅改当天，不影响其他天；默认 ${task.hoursPerDay}h/天）` : '直接点击或用 − / + 修改当天项目时长'}">
+              <button type="button" onclick="stepTaskDayHours('${task.id}', '${dateStr}', -1, event)"
+                class="px-1 py-0.5 text-[10px] text-slate-500 hover:bg-slate-100 hover:text-indigo-600 font-bold cursor-pointer leading-none">−</button>
+              <input type="number" min="0" max="24" step="0.5" value="${dayHours}"
+                onclick="event.stopPropagation()"
+                onfocus="this.select()"
+                onchange="updateTaskDayHours('${task.id}', '${dateStr}', this.value, event)"
+                onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
+                class="day-hours-input w-7 text-center text-[11px] font-bold ${isDone ? 'text-emerald-700' : 'text-indigo-600'} bg-transparent focus:outline-none focus:bg-indigo-50/60 py-0.5">
+              <span class="text-[9px] ${isDone ? 'text-emerald-600' : 'text-slate-400'} pr-0.5 select-none">h</span>
+              <button type="button" onclick="stepTaskDayHours('${task.id}', '${dateStr}', 1, event)"
+                class="px-1 py-0.5 text-[10px] text-slate-500 hover:bg-slate-100 hover:text-indigo-600 font-bold cursor-pointer leading-none">+</button>
+            </div>
+            <span class="export-only font-semibold text-[11px] shrink-0 ${isDone ? 'text-emerald-700' : 'text-indigo-600'}">${dayHours}h</span>
           </div>
         </div>
       `;
@@ -1846,18 +2032,46 @@
         .map(cid => state.members.find(m => m.id === cid)?.name)
         .filter(Boolean);
 
+      const isSingleDay = task.startDate === task.endDate;
+      const totalH = getTaskTotalHours(task);
+      const allDates = getTaskDateList(task.startDate, task.endDate);
+      const doneDaysCount = allDates.filter(d => isTaskDoneOnDate(task, d)).length;
+      const isDone = task.status === 'done';
+
+      const hoursControlHtml = isSingleDay
+        ? `
+          <div class="no-export inline-flex items-center rounded-lg border border-indigo-200 bg-indigo-50/60 overflow-hidden shrink-0" title="直接调整该项目时长">
+            <button type="button" onclick="stepTaskDayHours('${task.id}', '${task.startDate}', -1, event)"
+              class="px-1.5 py-0.5 text-xs text-indigo-600 hover:bg-indigo-100 font-bold cursor-pointer">−</button>
+            <input type="number" min="0" max="24" step="0.5" value="${getTaskHoursOnDate(task, task.startDate)}"
+              onclick="event.stopPropagation()"
+              onfocus="this.select()"
+              onchange="updateTaskDayHours('${task.id}', '${task.startDate}', this.value, event)"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
+              class="day-hours-input w-9 text-center text-xs font-bold text-indigo-700 bg-transparent focus:outline-none py-0.5">
+            <span class="text-[10px] text-indigo-500 pr-0.5">h</span>
+            <button type="button" onclick="stepTaskDayHours('${task.id}', '${task.startDate}', 1, event)"
+              class="px-1.5 py-0.5 text-xs text-indigo-600 hover:bg-indigo-100 font-bold cursor-pointer">+</button>
+          </div>
+          <span class="export-only shrink-0 text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg">${totalH}h</span>
+        `
+        : `
+          <span onclick="openTaskModal('${task.id}', event)" title="点击可按天微调任意一天工时"
+            class="shrink-0 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded-lg cursor-pointer">
+            共${totalH}h (${allDates.length}天)
+          </span>
+        `;
+
       return `
-        <div class="p-3.5 rounded-xl border border-slate-200 hover:border-indigo-300 bg-white shadow-2xs transition space-y-2">
+        <div class="p-3.5 rounded-xl border ${isDone ? 'border-emerald-200 bg-emerald-50/20' : 'border-slate-200 bg-white'} hover:border-indigo-300 shadow-2xs transition space-y-2">
           <div class="flex items-start justify-between gap-2">
             <div>
               ${task.project ? `<span class="inline-block text-[11px] px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100 font-semibold mb-1">📁 ${escapeHtml(task.project)}</span>` : ''}
-              <h4 onclick="openTaskModal('${task.id}', event)" class="font-bold text-slate-800 text-xs sm:text-sm hover:text-indigo-600 cursor-pointer leading-snug">
+              <h4 onclick="openTaskModal('${task.id}', event)" class="font-bold ${isDone ? 'line-through text-slate-500' : 'text-slate-800'} text-xs sm:text-sm hover:text-indigo-600 cursor-pointer leading-snug">
                 ${escapeHtml(task.title)}
               </h4>
             </div>
-            <span class="shrink-0 text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg">
-              ${task.hoursPerDay}h/天
-            </span>
+            ${hoursControlHtml}
           </div>
 
           ${task.note ? `<p class="text-xs text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-100">${escapeHtml(task.note)}</p>` : ''}
@@ -1870,6 +2084,7 @@
               </select>
               <span class="text-[11px] text-slate-400">
                 📅 ${task.startDate.slice(5)} ~ ${task.endDate.slice(5)}
+                ${!isSingleDay && doneDaysCount > 0 ? `<b class="text-emerald-600 ml-1">(已完成${doneDaysCount}/${allDates.length}天)</b>` : ''}
               </span>
             </div>
 
@@ -1878,15 +2093,25 @@
                 👥 项目成员: ${collabNames.length > 0 ? `<b class="text-slate-700">${escapeHtml(collabNames.join('、'))}</b>` : '无协作成员'}
               </span>
               <button onclick="openTaskModal('${task.id}', event)" class="no-export text-indigo-600 hover:underline cursor-pointer">
-                +改成员
+                +改排期/成员
               </button>
             </div>
           </div>
 
-          <div class="pt-1 flex items-center justify-end gap-1.5 no-export">
-            ${task.status !== 'doing' ? `<button onclick="quickChangeStatus('${task.id}', 'doing')" class="text-[11px] px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 cursor-pointer">设为进行中</button>` : ''}
-            ${task.status !== 'blocked' ? `<button onclick="quickChangeStatus('${task.id}', 'blocked')" class="text-[11px] px-2 py-1 rounded bg-rose-50 text-rose-600 hover:bg-rose-100 cursor-pointer">标为卡点</button>` : ''}
-            ${task.status !== 'done' ? `<button onclick="quickChangeStatus('${task.id}', 'done')" class="text-[11px] px-2 py-1 rounded bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-medium cursor-pointer">✓ 完成</button>` : ''}
+          <div class="pt-1 flex items-center justify-between gap-1.5 no-export">
+            <button onclick="quickChangeStatus('${task.id}', '${isDone ? 'doing' : 'done'}')"
+              class="text-[11px] px-2.5 py-1 rounded-lg border transition flex items-center gap-1 cursor-pointer ${
+                isDone
+                  ? 'bg-emerald-100/80 border-emerald-300 text-emerald-700 font-semibold hover:bg-emerald-200/70'
+                  : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 font-medium'
+              }">
+              <i class="${isDone ? 'fa-solid fa-square-check text-emerald-600' : 'fa-regular fa-square'}"></i>
+              <span>已完成</span>
+            </button>
+            <div class="flex items-center gap-1.5">
+              ${task.status !== 'doing' ? `<button onclick="quickChangeStatus('${task.id}', 'doing')" class="text-[11px] px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 cursor-pointer">设为进行中</button>` : ''}
+              ${task.status !== 'blocked' ? `<button onclick="quickChangeStatus('${task.id}', 'blocked')" class="text-[11px] px-2 py-1 rounded bg-rose-50 text-rose-600 hover:bg-rose-100 cursor-pointer">标为卡点</button>` : ''}
+            </div>
           </div>
         </div>
       `;
@@ -1900,7 +2125,18 @@
     function quickChangeStatus(taskId, newStatus) {
       const t = state.tasks.find(item => item.id === taskId);
       if (t) {
-        t.status = newStatus;
+        if (newStatus === 'done') {
+          if (t.status !== 'done') t.prevStatus = t.status;
+          t.status = 'done';
+        } else {
+          if (t.status === 'done' && t.dailyDone) {
+            const allDates = getTaskDateList(t.startDate, t.endDate);
+            if (allDates.every(d => !!t.dailyDone[d])) {
+              delete t.dailyDone;
+            }
+          }
+          t.status = newStatus;
+        }
         renderAll();
       }
     }
@@ -1946,10 +2182,18 @@
 
     // ================= TASK MODAL LOGIC =================
     let currentEditingCollaborators = [];
+    let currentEditingDailyHours = {};
+    let currentEditingDailyDone = {};
     let deleteTaskConfirmArmed = false;
 
     function handleCellClick(memberId, dateStr, event) {
-      if (event.target.closest('[onclick^="openTaskModal"]') || event.target.tagName === 'SELECT') return;
+      if (
+        event.target.closest('.task-pill-card') ||
+        event.target.closest('[onclick^="openTaskModal"]') ||
+        event.target.closest('button, input, select, label')
+      ) {
+        return;
+      }
       openTaskModal(null, null, memberId, dateStr);
     }
 
@@ -2087,6 +2331,8 @@
         populateWorkContentSelect(task.title || state.workContentOptions[0]);
         document.getElementById('taskAssigneeInput').value = task.memberId;
         currentEditingCollaborators = Array.isArray(task.collaborators) ? [...task.collaborators] : [];
+        currentEditingDailyHours = (task.dailyHours && typeof task.dailyHours === 'object') ? { ...task.dailyHours } : {};
+        currentEditingDailyDone = (task.dailyDone && typeof task.dailyDone === 'object') ? { ...task.dailyDone } : {};
         document.getElementById('taskSourceInput').value = task.source || 'assigned';
         document.getElementById('taskStartInput').value = task.startDate;
         document.getElementById('taskEndInput').value = task.endDate;
@@ -2109,6 +2355,8 @@
         populateWorkContentSelect(state.workContentOptions[0] || '');
         document.getElementById('taskAssigneeInput').value = targetMember;
         currentEditingCollaborators = [];
+        currentEditingDailyHours = {};
+        currentEditingDailyDone = {};
         document.getElementById('taskSourceInput').value = defaultSource;
         document.getElementById('taskStartInput').value = targetDate;
         document.getElementById('taskEndInput').value = targetDate;
@@ -2136,23 +2384,103 @@
       updateWorkloadPreview();
     }
 
-    function updateWorkloadPreview() {
+    function handleModalDayHoursInput(dateStr, rawVal) {
+      let val = Number(rawVal);
+      if (!Number.isFinite(val) || val < 0) val = 0;
+      if (val > 24) val = 24;
+      val = Math.round(val * 10) / 10;
+      const defaultH = Math.round((Number(document.getElementById('taskHoursPerDayInput').value) || 0) * 10) / 10;
+      if (val === defaultH) {
+        delete currentEditingDailyHours[dateStr];
+      } else {
+        currentEditingDailyHours[dateStr] = val;
+      }
+      updateWorkloadPreview(true);
+    }
+
+    function resetModalAllDailyHours() {
+      currentEditingDailyHours = {};
+      updateWorkloadPreview();
+    }
+
+    function updateWorkloadPreview(onlyUpdateSummary = false) {
       const s = document.getElementById('taskStartInput').value;
       const e = document.getElementById('taskEndInput').value;
-      const h = Number(document.getElementById('taskHoursPerDayInput').value) || 0;
+      const h = Math.round((Number(document.getElementById('taskHoursPerDayInput').value) || 0) * 10) / 10;
       const previewEl = document.getElementById('workloadPreviewText');
+      const dailyBox = document.getElementById('modalDailyHoursBox');
 
-      if (s && e) {
-        const sd = new Date(s);
-        const ed = new Date(e);
-        const diffDays = Math.floor((ed - sd) / (1000 * 60 * 60 * 24)) + 1;
-        if (diffDays <= 0) {
-          previewEl.innerHTML = `<span class="text-rose-600 font-semibold">⚠️ 结束日期不能早于开始日期</span>`;
-        } else {
-          const totalH = Math.round(diffDays * h * 10) / 10;
-          previewEl.innerHTML = `持续 <b>${diffDays}</b> 天，每人每天占用 <b>${h}h</b>，单人累计 <b>${totalH}h</b>`;
-        }
+      if (!s || !e) {
+        if (dailyBox) dailyBox.classList.add('hidden');
+        return;
       }
+
+      const dates = getTaskDateList(s, e);
+      if (e < s || dates.length === 0) {
+        previewEl.innerHTML = `<span class="text-rose-600 font-semibold">⚠️ 结束日期不能早于开始日期</span>`;
+        if (dailyBox) dailyBox.classList.add('hidden');
+        return;
+      }
+
+      const totalH = Math.round(
+        dates.reduce((sum, d) => {
+          const dh = Object.prototype.hasOwnProperty.call(currentEditingDailyHours, d)
+            ? Number(currentEditingDailyHours[d]) || 0
+            : h;
+          return sum + dh;
+        }, 0) * 10
+      ) / 10;
+
+      const customCount = dates.filter(d =>
+        Object.prototype.hasOwnProperty.call(currentEditingDailyHours, d) &&
+        Math.round((Number(currentEditingDailyHours[d]) || 0) * 10) / 10 !== h
+      ).length;
+
+      previewEl.innerHTML = customCount > 0
+        ? `持续 <b>${dates.length}</b> 天（其中 ${customCount} 天已单独微调），累计总时长 <b>${totalH}h</b>`
+        : `持续 <b>${dates.length}</b> 天，每人每天 <b>${h}h</b>，累计总时长 <b>${totalH}h</b>`;
+
+      if (!dailyBox) return;
+      if (dates.length <= 1 || dates.length > 60) {
+        dailyBox.classList.add('hidden');
+        return;
+      }
+
+      dailyBox.classList.remove('hidden');
+      if (onlyUpdateSummary) return;
+
+      const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+      const itemsHtml = dates.map(d => {
+        const [, m, day] = d.split('-').map(Number);
+        const dt = new Date(Number(d.slice(0, 4)), m - 1, day);
+        const w = weekDays[dt.getDay()];
+        const val = Object.prototype.hasOwnProperty.call(currentEditingDailyHours, d)
+          ? currentEditingDailyHours[d]
+          : h;
+        const isCustom = Object.prototype.hasOwnProperty.call(currentEditingDailyHours, d) && Number(val) !== h;
+        return `
+          <label class="flex items-center justify-between gap-1.5 px-2 py-1 rounded-lg border ${isCustom ? 'border-amber-300 bg-amber-50/70' : 'border-slate-200 bg-white'} text-[11px]">
+            <span class="text-slate-600 font-medium">${m}/${day} 周${w}</span>
+            <span class="inline-flex items-center gap-0.5">
+              <input type="number" min="0" max="24" step="0.5" value="${val}"
+                onfocus="this.select()"
+                onchange="handleModalDayHoursInput('${d}', this.value)"
+                class="day-hours-input w-10 text-center font-bold text-indigo-600 border border-slate-200 rounded px-1 py-0.5 bg-slate-50 focus:bg-white focus:border-indigo-400 focus:outline-none">
+              <span class="text-slate-400">h</span>
+            </span>
+          </label>
+        `;
+      }).join('');
+
+      dailyBox.innerHTML = `
+        <div class="flex items-center justify-between text-[11px]">
+          <span class="font-semibold text-slate-700"><i class="fa-solid fa-calendar-day text-indigo-500 mr-1"></i>按天单独调整时长（修改某一天不会影响其他天）：</span>
+          ${customCount > 0 ? `<button type="button" onclick="resetModalAllDailyHours()" class="text-indigo-600 hover:underline cursor-pointer">全部恢复为 ${h}h/天</button>` : ''}
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 max-h-36 overflow-y-auto pr-0.5">
+          ${itemsHtml}
+        </div>
+      `;
     }
 
     function saveTaskForm(event) {
@@ -2174,7 +2502,8 @@
       const source = document.getElementById('taskSourceInput').value;
       const startDate = document.getElementById('taskStartInput').value;
       const endDate = document.getElementById('taskEndInput').value;
-      const hoursPerDay = Number(document.getElementById('taskHoursPerDayInput').value) || 1;
+      const rawHours = Number(document.getElementById('taskHoursPerDayInput').value);
+      const hoursPerDay = Number.isFinite(rawHours) && rawHours >= 0 ? Math.round(rawHours * 10) / 10 : 2;
       const status = document.getElementById('taskStatusInput').value;
       const priority = document.getElementById('taskPriorityInput').value;
       const note = document.getElementById('taskNoteInput').value.trim();
@@ -2184,11 +2513,42 @@
         return;
       }
 
+      const validDates = new Set(getTaskDateList(startDate, endDate));
+      const cleanedDailyHours = {};
+      if (startDate !== endDate) {
+        Object.keys(currentEditingDailyHours || {}).forEach(d => {
+          if (validDates.has(d)) {
+            const v = Math.round((Number(currentEditingDailyHours[d]) || 0) * 10) / 10;
+            if (v !== hoursPerDay) {
+              cleanedDailyHours[d] = v;
+            }
+          }
+        });
+      }
+
+      const cleanedDailyDone = {};
+      if (startDate !== endDate) {
+        Object.keys(currentEditingDailyDone || {}).forEach(d => {
+          if (validDates.has(d) && currentEditingDailyDone[d]) {
+            cleanedDailyDone[d] = true;
+          }
+        });
+      }
+
       if (id) {
         const idx = state.tasks.findIndex(t => t.id === id);
         if (idx !== -1) {
-          state.tasks[idx] = {
-            ...state.tasks[idx],
+          const prevTask = state.tasks[idx];
+          // If user switched task status from 'done' back to an active status, reopen if all days were marked done
+          if (prevTask.status === 'done' && status !== 'done' && validDates.size > 0) {
+            const allWereDone = Array.from(validDates).every(d => !!cleanedDailyDone[d]);
+            if (allWereDone) {
+              Object.keys(cleanedDailyDone).forEach(k => delete cleanedDailyDone[k]);
+            }
+          }
+
+          const updatedTask = {
+            ...prevTask,
             project,
             title,
             memberId,
@@ -2201,9 +2561,20 @@
             priority,
             note
           };
+          if (Object.keys(cleanedDailyHours).length > 0) {
+            updatedTask.dailyHours = cleanedDailyHours;
+          } else {
+            delete updatedTask.dailyHours;
+          }
+          if (Object.keys(cleanedDailyDone).length > 0) {
+            updatedTask.dailyDone = cleanedDailyDone;
+          } else {
+            delete updatedTask.dailyDone;
+          }
+          state.tasks[idx] = updatedTask;
         }
       } else {
-        state.tasks.push({
+        const newTask = {
           id: 't_' + Date.now(),
           project,
           title,
@@ -2216,7 +2587,11 @@
           status,
           priority,
           note
-        });
+        };
+        if (Object.keys(cleanedDailyHours).length > 0) {
+          newTask.dailyHours = cleanedDailyHours;
+        }
+        state.tasks.push(newTask);
       }
 
       closeTaskModal();
@@ -2689,18 +3064,36 @@
       });
     }
 
-    window.addEventListener('DOMContentLoaded', () => {
+    window.addEventListener('DOMContentLoaded', async () => {
       checkAccessOnLoad();
       updateCloudStatusBadge();
+      const hadLocalData = !!localStorage.getItem(STORAGE_KEY);
       renderAll();
+
       if (cloudConfig && cloudConfig.token) {
         pullFromGitHubCloud(false);
-        // Auto refresh from cloud every 45 seconds when page is visible
+        // Auto refresh from cloud every 45 seconds when page is visible & not actively editing
         setInterval(() => {
-          if (!document.hidden && !isSyncingCloud) {
+          const isEditingInlineHours = document.activeElement?.classList?.contains('day-hours-input');
+          const isTaskModalOpen = !document.getElementById('taskModal')?.classList.contains('hidden');
+          if (!document.hidden && !isSyncingCloud && !cloudPushTimer && !isEditingInlineHours && !isTaskModalOpen) {
             pullFromGitHubCloud(false);
           }
         }, 45000);
+      } else if (!hadLocalData) {
+        // Fallback: if opened on GitHub Pages or local HTTP server without localStorage yet, load bundled data.json
+        try {
+          const res = await fetch(`./data.json?_t=${Date.now()}`);
+          if (res.ok) {
+            const bundled = await res.json();
+            if (bundled && Array.isArray(bundled.members) && Array.isArray(bundled.tasks)) {
+              state = bundled;
+              renderAll();
+            }
+          }
+        } catch (_) {
+          // Ignore fetch error when opened directly via file://
+        }
       }
     });
   </script>

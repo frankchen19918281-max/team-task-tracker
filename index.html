@@ -142,13 +142,20 @@
 
       <!-- Right: Quick Actions + Cloud Sync + Export Image + Trash Bin + Safe Lock -->
       <div class="flex items-center gap-2">
-        <!-- GitHub Cloud Sync Button -->
-        <button id="cloudSyncStatusBtn" onclick="openCloudSyncModal()"
-          class="px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition shadow-xs cursor-pointer"
-          title="配置 GitHub 仓库云端同步，实现团队多人跨电脑/手机实时同步">
-          <i class="fa-solid fa-cloud text-slate-400"></i>
-          <span>云同步:未配</span>
-        </button>
+        <!-- One-Click GitHub Sync Button + Cloud Config Gear -->
+        <div class="inline-flex items-center rounded-xl shadow-xs">
+          <button id="cloudSyncStatusBtn" onclick="handleOneClickGitHubSync()"
+            class="px-3 py-2 rounded-l-xl border border-slate-800 bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition cursor-pointer"
+            title="点击立即将当前排期一键同步更新到 GitHub">
+            <i class="fa-brands fa-github text-sm"></i>
+            <span>一键更新GitHub</span>
+          </button>
+          <button onclick="openCloudSyncModal()"
+            class="px-2 py-2 rounded-r-xl border border-l-0 border-slate-300 bg-white hover:bg-slate-100 text-slate-600 text-xs sm:text-sm transition cursor-pointer"
+            title="GitHub 云同步设置 / 从云端拉取 / 复制团队免配链接">
+            <i class="fa-solid fa-gear"></i>
+          </button>
+        </div>
 
         <!-- Export Image for Boss Button -->
         <button id="exportImgBtn" onclick="exportScheduleAsImage()"
@@ -1229,24 +1236,92 @@
       return null;
     }
 
+    let hasLocalGitBridge = false;
+
+    function showQuickNoticeToast(msg) {
+      const toast = document.getElementById('undoToast');
+      if (!toast) return;
+      document.getElementById('undoToastMsg').textContent = msg;
+      const undoBtn = toast.querySelector('button[onclick="undoLastDelete()"]');
+      if (undoBtn) undoBtn.classList.add('hidden');
+      toast.classList.remove('hidden');
+      toast.classList.add('flex');
+      if (undoTimer) clearTimeout(undoTimer);
+      undoTimer = setTimeout(() => {
+        hideUndoToast();
+        if (undoBtn) undoBtn.classList.remove('hidden');
+      }, 4000);
+    }
+
     function updateCloudStatusBadge(statusText, statusType = 'idle') {
       const btn = document.getElementById('cloudSyncStatusBtn');
       if (!btn) return;
-      if (!cloudConfig || !cloudConfig.token) {
-        btn.className = 'px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-xs sm:text-sm font-medium flex items-center gap-1.5 transition shadow-xs cursor-pointer';
-        btn.innerHTML = `<i class="fa-solid fa-cloud text-slate-400"></i><span>云同步:未配</span>`;
+      if (statusType === 'syncing') {
+        btn.className = 'px-3 py-2 rounded-l-xl border border-indigo-600 bg-indigo-600 text-white text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition cursor-pointer';
+        btn.innerHTML = `<i class="fa-solid fa-rotate fa-spin"></i><span>${statusText || '正在更新GitHub...'}</span>`;
+      } else if (statusType === 'error') {
+        btn.className = 'px-3 py-2 rounded-l-xl border border-rose-600 bg-rose-600 hover:bg-rose-700 text-white text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition cursor-pointer';
+        btn.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i><span>${statusText || '更新失败(点此重试)'}</span>`;
+      } else if (statusType === 'ok') {
+        btn.className = 'px-3 py-2 rounded-l-xl border border-emerald-600 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition cursor-pointer';
+        btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i><span>${statusText || '一键更新GitHub'}</span>`;
+      } else if (hasLocalGitBridge || (cloudConfig && cloudConfig.token)) {
+        btn.className = 'px-3 py-2 rounded-l-xl border border-slate-800 bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition cursor-pointer';
+        btn.innerHTML = `<i class="fa-brands fa-github text-sm"></i><span>一键更新GitHub</span>`;
+      } else {
+        btn.className = 'px-3 py-2 rounded-l-xl border border-slate-800 bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition cursor-pointer';
+        btn.innerHTML = `<i class="fa-brands fa-github text-sm"></i><span>一键更新GitHub</span>`;
+      }
+    }
+
+    async function handleOneClickGitHubSync() {
+      if (isSyncingCloud) return;
+
+      // Mode 1: Local Git bridge server (zero Token needed!)
+      if (hasLocalGitBridge) {
+        isSyncingCloud = true;
+        updateCloudStatusBadge('正在推送GitHub...', 'syncing');
+        try {
+          const res = await fetch('/api/github-sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(state, null, 2)
+          });
+          const result = await res.json();
+          if (!res.ok || !result.ok) {
+            throw new Error(result.error || `HTTP ${res.status}`);
+          }
+          const timeStr = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+          updateCloudStatusBadge(`已更新GitHub (${timeStr.slice(0, 5)})`, 'ok');
+          showQuickNoticeToast(`✅ 已成功一键同步更新到 GitHub (${timeStr})`);
+        } catch (err) {
+          console.error('Local Git Sync Error:', err);
+          updateCloudStatusBadge('更新失败', 'error');
+          alert(`❌ 推送到 GitHub 失败：${err.message}`);
+        } finally {
+          isSyncingCloud = false;
+        }
         return;
       }
-      if (statusType === 'syncing') {
-        btn.className = 'px-3 py-2 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition shadow-xs cursor-pointer';
-        btn.innerHTML = `<i class="fa-solid fa-rotate fa-spin text-indigo-600"></i><span>${statusText || '同步中...'}</span>`;
-      } else if (statusType === 'error') {
-        btn.className = 'px-3 py-2 rounded-xl border border-rose-300 bg-rose-50 text-rose-700 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition shadow-xs cursor-pointer';
-        btn.innerHTML = `<i class="fa-solid fa-cloud-bolt text-rose-600"></i><span>${statusText || '同步失败'}</span>`;
-      } else {
-        btn.className = 'px-3 py-2 rounded-xl border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100/70 text-emerald-700 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition shadow-xs cursor-pointer';
-        btn.innerHTML = `<i class="fa-solid fa-cloud-check text-emerald-600"></i><span>${statusText || '云端已同步'}</span>`;
+
+      // Mode 2: Browser GitHub API Token already configured -> 1-click push!
+      if (cloudConfig && cloudConfig.token) {
+        if (cloudPushTimer) {
+          clearTimeout(cloudPushTimer);
+          cloudPushTimer = null;
+        }
+        await pushToGitHubCloud(false);
+        if (!document.getElementById('cloudSyncStatusBtn')?.textContent?.includes('失败')) {
+          const timeStr = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+          updateCloudStatusBadge(`已更新GitHub (${timeStr.slice(0, 5)})`, 'ok');
+          showQuickNoticeToast(`✅ 已成功一键同步更新到 GitHub (${timeStr})`);
+        }
+        return;
       }
+
+      // Mode 3: First time on file:// or unconfigured browser -> open setup modal once
+      openCloudSyncModal();
+      setTimeout(() => document.getElementById('ghTokenInput')?.focus(), 80);
     }
 
     function utf8ToBase64(str) {
@@ -1511,7 +1586,15 @@
 
     function saveState() {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        const serialized = JSON.stringify(state);
+        localStorage.setItem(STORAGE_KEY, serialized);
+        if (hasLocalGitBridge) {
+          fetch('/api/save-local', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(state, null, 2)
+          }).catch(() => {});
+        }
         scheduleCloudPush();
       } catch (e) {
         console.error('Failed to save localStorage', e);
@@ -3269,8 +3352,29 @@
 
     window.addEventListener('DOMContentLoaded', async () => {
       checkAccessOnLoad();
-      updateCloudStatusBadge();
       const hadLocalData = !!localStorage.getItem(STORAGE_KEY) && !loadedFromLegacyDemo;
+
+      // Detect if running via local zero-token Git bridge server
+      if (window.location.protocol.startsWith('http') && (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost')) {
+        try {
+          const pingRes = await fetch('/api/ping');
+          if (pingRes.ok) {
+            const pingData = await pingRes.json();
+            if (pingData && pingData.bridge === 'teampulse-local-git') {
+              hasLocalGitBridge = true;
+              if (pingData.data && Array.isArray(pingData.data.members) && Array.isArray(pingData.data.tasks)) {
+                state = {
+                  ...pingData.data,
+                  currentActorId: state.currentActorId || pingData.data.currentActorId,
+                  viewMode: state.viewMode || 'matrix'
+                };
+              }
+            }
+          }
+        } catch (_) {}
+      }
+
+      updateCloudStatusBadge();
       renderAll();
 
       if (cloudConfig && cloudConfig.token) {
@@ -3283,7 +3387,7 @@
             pullFromGitHubCloud(false);
           }
         }, 45000);
-      } else if (!hadLocalData) {
+      } else if (!hadLocalData && !hasLocalGitBridge) {
         // Pull latest data.json from GitHub public API (works even when opened via local file://)
         pullFromGitHubCloud(false);
       }

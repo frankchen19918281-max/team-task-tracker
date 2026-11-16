@@ -12,3 +12,6 @@ Desktop.ini
 # Local backup files
 *.bak
 team_schedule_backup_*.json
+
+# Local macOS helper scripts
+*.command

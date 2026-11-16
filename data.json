@@ -262,7 +262,10 @@
       "hoursPerDay": 8,
       "status": "todo",
       "priority": "normal",
-      "note": ""
+      "note": "",
+      "dailyHours": {
+        "2026-11-17": 7
+      }
     },
     {
       "id": "t_1794540845194",

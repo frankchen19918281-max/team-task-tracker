@@ -163,7 +163,7 @@
       "capacity": 8,
       "color": "blue",
       "isBoss": false,
-      "active": true
+      "active": false
     },
     {
       "id": "m4",
@@ -172,7 +172,7 @@
       "capacity": 8,
       "color": "amber",
       "isBoss": false,
-      "active": true
+      "active": false
     }
   ],
   "tasks": [

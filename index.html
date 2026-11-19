@@ -161,7 +161,7 @@
         <!-- Daily Report Export Button -->
         <button id="dailyReportBtn" onclick="openDailyReportModal()"
           class="px-3 py-2 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition shadow-xs cursor-pointer"
-          title="根据当日排期一键生成并下载 ERP 日报模板 (.xlsx)">
+          title="根据当日排期一键生成并下载 ERP 日报模板 (.xls)">
           <i class="fa-solid fa-file-excel"></i>
           <span>生成当日日报</span>
         </button>
@@ -721,9 +721,9 @@
         <div>
           <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
             <i class="fa-solid fa-file-excel text-emerald-600"></i>
-            <span>生成当日 ERP 日报模板 (.xlsx)</span>
+            <span>生成当日 ERP 日报 (.xls)</span>
           </h3>
-          <p class="text-xs text-slate-600 mt-0.5">自动从每日排期中提取报工日期、报工时长与报工内容，可直接微调后下载与 ERP 模板同格式的 Excel 文件</p>
+          <p class="text-xs text-slate-600 mt-0.5">已内置原版 ERP 双明细表模板（明细1 + 明细2），点击下载即可直接导入单位 ERP 系统</p>
         </div>
         <button onclick="closeDailyReportModal()" class="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
           <i class="fa-solid fa-xmark text-lg"></i>
@@ -748,27 +748,6 @@
           </div>
           <div id="dailyReportSummaryBadge" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-100">
             共 0 项 · 合计 0h
-          </div>
-        </div>
-
-        <!-- ERP Template Binding Bar -->
-        <div class="flex flex-wrap items-center justify-between gap-2 bg-indigo-50/60 px-3.5 py-2.5 rounded-xl border border-indigo-200/80 text-xs">
-          <div class="flex items-center gap-2 min-w-0">
-            <i class="fa-solid fa-file-shield text-indigo-600 shrink-0"></i>
-            <span id="erpTemplateStatusText" class="text-slate-700 font-medium truncate">
-              尚未绑定 ERP 原版模板（建议上传一次从 ERP 下载的空白模板 .xlsx，确保 Sheet 名称与格式 100% 一致）
-            </span>
-          </div>
-          <div class="flex items-center gap-2 shrink-0">
-            <input type="file" id="erpTemplateFileInput" accept=".xlsx,.xls" class="hidden" onchange="handleErpTemplateUpload(event)">
-            <button type="button" onclick="document.getElementById('erpTemplateFileInput').click()"
-              class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold cursor-pointer">
-              <i class="fa-solid fa-upload mr-1"></i>选择 ERP 原版模板 (.xlsx)
-            </button>
-            <button type="button" id="clearErpTemplateBtn" onclick="clearErpTemplate()"
-              class="hidden px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-600 cursor-pointer">
-              清除
-            </button>
           </div>
         </div>
 
@@ -805,7 +784,7 @@
           <button id="downloadDailyReportBtn" onclick="downloadDailyReportXlsx()"
             class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm cursor-pointer">
             <i class="fa-solid fa-download"></i>
-            <span>下载当日日报 (.xlsx)</span>
+            <span>下载当日日报 (.xls)</span>
           </button>
         </div>
       </div>
@@ -3714,70 +3693,67 @@
     }
 
     // ================= DAILY ERP REPORT GENERATOR =================
-    const ERP_TEMPLATE_STORAGE_KEY = 'TEAMPULSE_ERP_TEMPLATE_V1';
+    // Built-in original ERP blank template (.xls BIFF8: Sheet1="明细1", Sheet2="明细2" with leading-space headers)
+    const BUILTIN_ERP_XLS_TEMPLATE_B64 =
+      '0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAOwADAP7/CQAGAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAEAAAAgAAAAEAAAD+////AAAAAAEAAAD/////////////' +
+      '////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////' +
+      '////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////' +
+      '////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////' +
+      '////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////' +
+      '//////////////////////////////////////////////////////////////////////////////////9SAG8AbwB0ACAARQBuAHQAcgB5AAAAAAAAAAAA' +
+      'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFgAFAf//////////AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMA' +
+      'AABACgAAAAAAAFcAbwByAGsAYgBvAG8AawAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASAAIB////////////////' +
+      'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB8KAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
+      'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
+      'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
+      'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP7////9/////v///wQAAAAFAAAABgAAAAcAAAAIAAAA/v//////////////////////////////' +
+      '////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////' +
+      '////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////' +
+      '////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////' +
+      '////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////' +
+      '////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////' +
+      '////////AQAAAAIAAAADAAAABAAAAAUAAAAGAAAABwAAAAgAAAAJAAAACgAAAAsAAAAMAAAADQAAAA4AAAAPAAAAEAAAABEAAAASAAAAEwAAABQAAAAVAAAA' +
+      'FgAAABcAAAAYAAAAGQAAABoAAAAbAAAAHAAAAB0AAAAeAAAAHwAAACAAAAAhAAAAIgAAACMAAAAkAAAAJQAAACYAAAAnAAAAKAAAAP7/////////////////' +
+      '////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////' +
+      '////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////' +
+      '////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////' +
+      '//////////////////////////////////////////////////////////////////////////////////////////8JCBAAAAYFANMQzAdBAAAABgAAAOEA' +
+      'AgCwBMEAAgAAAOIAAABcAHAACQAARUNNLTNERkYkICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg' +
+      'ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIEIAAgCwBGEBAgAAAD0BBAAAAAEAnAACAA4AGQACAAAAEgACAAAAEwACAAAArwECAAAA' +
+      'vAECAAAAPQASAGgBDgFcOr4jOAAAAAAAAQBYAkAAAgAAAI0AAgAAACIAAgAAAA4AAgABALcBAgAAANoAAgAAADEAFQDIAAAA/3+QAQAAAAAAAAUAQXJpYWwx' +
+      'ABUAyAAAAP9/kAEAAAAAAAAFAEFyaWFsMQAVAMgAAAD/f5ABAAAAAAAABQBBcmlhbDEAFQDIAAAA/3+QAQAAAAAAAAUAQXJpYWwxABUAtAAAAAgAvAIAAAAA' +
+      'AAAFAEFyaWFsHgQaAAUAFQAAIiQiIywjIzBfKTsoIiQiIywjIzApHgQfAAYAGgAAIiQiIywjIzBfKTtbUmVkXSgiJCIjLCMjMCkeBCAABwAbAAAiJCIjLCMj' +
+      'MC4wMF8pOygiJCIjLCMjMC4wMCkeBCUACAAgAAAiJCIjLCMjMC4wMF8pO1tSZWRdKCIkIiMsIyMwLjAwKR4ENQAqADAAAF8oIiQiKiAjLCMjMF8pO18oIiQi' +
+      'KiAoIywjIzApO18oIiQiKiAiLSJfKTtfKEBfKR4ELAApACcAAF8oKiAjLCMjMF8pO18oKiAoIywjIzApO18oKiAiLSJfKTtfKEBfKR4EPQAsADgAAF8oIiQi' +
+      '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' +
+      '/QAKAAAAAgAVAAgAAAD9AAoAAAADABUAAwAAAP0ACgAAAAQAFQAEAAAA/QAKAAAABQAVAAUAAAD9AAoAAAAGABUABgAAAP0ACgAAAAcAFQAJAAAA1wAGAIQA' +
+      'AAAAAD4CEgC2BAAAAABAAAAAAAAAAAAAAAAdAA8AAwAAAAAAAAEAAAAAAAAACgAAAP///////////////////////////////////////////wAAAAAAAAAA' +
+      'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
+      'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
+      'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
+      'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
+      'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
+
     let dailyReportRows = [];
-
-    function getSavedErpTemplate() {
-      try {
-        const raw = localStorage.getItem(ERP_TEMPLATE_STORAGE_KEY);
-        return raw ? JSON.parse(raw) : null;
-      } catch (e) {
-        return null;
-      }
-    }
-
-    function updateErpTemplateStatusUI() {
-      const statusEl = document.getElementById('erpTemplateStatusText');
-      const clearBtn = document.getElementById('clearErpTemplateBtn');
-      if (!statusEl || !clearBtn) return;
-      const tpl = getSavedErpTemplate();
-      if (tpl && tpl.base64) {
-        statusEl.innerHTML = `<span class="text-emerald-700 font-semibold">✅ 已绑定原版 ERP 模板：${escapeHtml(tpl.name)}</span>（导出时将完全保留原模板 Sheet 名称与结构）`;
-        clearBtn.classList.remove('hidden');
-      } else {
-        statusEl.textContent = '尚未绑定 ERP 原版模板（建议先选一次从 ERP 下载的空白模板 .xlsx，确保 Sheet 名称与格式 100% 有效）';
-        clearBtn.classList.add('hidden');
-      }
-    }
-
-    function handleErpTemplateUpload(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      if (typeof XLSX === 'undefined') {
-        alert('Excel 组件尚未加载完成，请稍后重试。');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        try {
-          const bytes = new Uint8Array(e.target.result);
-          let binary = '';
-          for (let i = 0; i < bytes.length; i++) {
-            binary += String.fromCharCode(bytes[i]);
-          }
-          const b64 = btoa(binary);
-          // Validate workbook can be parsed
-          const wb = XLSX.read(b64, { type: 'base64' });
-          if (!wb || !wb.SheetNames || wb.SheetNames.length === 0) {
-            alert('❌ 无法识别该 Excel 模板，请确认是从 ERP 导出的 .xlsx 文件。');
-            return;
-          }
-          localStorage.setItem(ERP_TEMPLATE_STORAGE_KEY, JSON.stringify({ name: file.name, base64: b64 }));
-          updateErpTemplateStatusUI();
-          alert(`✅ ERP 原版模板「${file.name}」绑定成功！\n包含工作表：${wb.SheetNames.join('、')}\n以后下载日报将严格按此模板结构填充。`);
-        } catch (err) {
-          console.error(err);
-          alert('❌ 读取模板失败，请检查文件是否为有效的 .xlsx 格式。');
-        }
-      };
-      reader.readAsArrayBuffer(file);
-      event.target.value = '';
-    }
-
-    function clearErpTemplate() {
-      localStorage.removeItem(ERP_TEMPLATE_STORAGE_KEY);
-      updateErpTemplateStatusUI();
-    }
 
     function openDailyReportModal() {
       const memberSel = document.getElementById('dailyReportMemberSelect');
@@ -3792,7 +3768,6 @@
         dateInput.value = getTodayStr();
       }
 
-      updateErpTemplateStatusUI();
       renderDailyReportPreview();
       const modal = document.getElementById('dailyReportModal');
       modal.classList.remove('hidden');
@@ -3887,98 +3862,55 @@
       const memberName = member ? member.name : '成员';
       const dateStr = document.getElementById('dailyReportDateInput').value || getTodayStr();
 
-      const headers = [
-        '序号',
-        '项目编号##xmbh',
-        '任务名称##rwmc',
-        '报工日期##bgrq',
-        '报工时长（h）##bgsch',
-        '报工内容##bgnr',
-        '类型##lx',
-        '项目总工##xmzg'
+      // Exact ERP headers in 明细2 (note the leading space on every header in the original ERP .xls template!)
+      const sheet2Headers = [
+        ' 序号',
+        ' 项目编号##xmbh',
+        ' 任务名称##rwmc',
+        ' 报工日期##bgrq',
+        ' 报工时长（h）##bgsch',
+        ' 报工内容##bgnr',
+        ' 类型##lx',
+        ' 项目总工##xmzg'
       ];
 
-      const aoa = [
-        headers,
-        ...dailyReportRows.map(r => [
-          r.seq,
-          r.projectCode,
-          r.taskName,
-          r.date,
-          r.hours,
-          r.content,
-          '',
-          ''
-        ])
-      ];
+      // Exact row structure matching ERP example: 6 columns (trailing 类型##lx & 项目总工##xmzg left unwritten)
+      const dataRows = dailyReportRows.map(r => [
+        Number(r.seq),
+        String(r.projectCode || ''),
+        String(r.taskName || ''),
+        String(r.date || ''),
+        Number(r.hours),
+        String(r.content || '')
+      ]);
 
-      const filename = `日报_${memberName}_${dateStr}.xlsx`;
+      const filename = `日报_${memberName}_${dateStr}.xls`;
 
       if (typeof XLSX !== 'undefined') {
-        const savedTpl = getSavedErpTemplate();
-        if (savedTpl && savedTpl.base64) {
-          const wb = XLSX.read(savedTpl.base64, { type: 'base64' });
-          let targetSheetName = wb.SheetNames[0];
-          for (const sName of wb.SheetNames) {
-            const rows = XLSX.utils.sheet_to_json(wb.Sheets[sName], { header: 1 });
-            if (rows && rows[0] && rows[0].some(c => String(c || '').includes('xmbh'))) {
-              targetSheetName = sName;
-              break;
-            }
-          }
-          const origSheet = wb.Sheets[targetSheetName];
-          const origAoa = XLSX.utils.sheet_to_json(origSheet, { header: 1 }) || [];
-          const tplHeaders = (origAoa[0] && origAoa[0].length > 0) ? origAoa[0] : headers;
+        const wb = XLSX.read(BUILTIN_ERP_XLS_TEMPLATE_B64, { type: 'base64' });
+        const targetSheetName = wb.SheetNames.includes('明细2') ? '明细2' : wb.SheetNames[wb.SheetNames.length - 1];
+        const origSheet = wb.Sheets[targetSheetName];
+        const origAoa = XLSX.utils.sheet_to_json(origSheet, { header: 1 }) || [];
+        const tplHeaders = (origAoa[0] && origAoa[0].length > 0) ? origAoa[0] : sheet2Headers;
 
-          const mappedRows = dailyReportRows.map(r => tplHeaders.map(h => {
-            const key = String(h || '').trim();
-            if (key === '序号') return r.seq;
-            if (key.includes('##xmbh') || key.startsWith('项目编号')) return r.projectCode;
-            if (key.includes('##rwmc') || key.startsWith('任务名称')) return r.taskName;
-            if (key.includes('##bgrq') || key.startsWith('报工日期')) return r.date;
-            if (key.includes('##bgsch') || key.startsWith('报工时长')) return r.hours;
-            if (key.includes('##bgnr') || key.startsWith('报工内容')) return r.content;
-            return '';
-          }));
-
-          const newWs = XLSX.utils.aoa_to_sheet([tplHeaders, ...mappedRows]);
-          if (origSheet['!cols']) newWs['!cols'] = origSheet['!cols'];
-          wb.Sheets[targetSheetName] = newWs;
-          XLSX.writeFile(wb, filename);
-        } else {
-          const ws = XLSX.utils.aoa_to_sheet(aoa);
-          ws['!cols'] = [
-            { wch: 8 },
-            { wch: 18 },
-            { wch: 22 },
-            { wch: 14 },
-            { wch: 16 },
-            { wch: 48 },
-            { wch: 12 },
-            { wch: 14 }
-          ];
-          const ws2 = XLSX.utils.aoa_to_sheet([
-            ['序号', '报工类型##bglx', '报工日期##bgrq', '报工时长（h）##bgsch', '报工内容##bgnr', '类型##lx']
-          ]);
-          const wb = XLSX.utils.book_new();
-          XLSX.utils.book_append_sheet(wb, ws, '项目报工');
-          XLSX.utils.book_append_sheet(wb, ws2, '非项目报工');
-          XLSX.writeFile(wb, filename);
-        }
+        const newWs = XLSX.utils.aoa_to_sheet([tplHeaders, ...dataRows]);
+        if (origSheet && origSheet['!cols']) newWs['!cols'] = origSheet['!cols'];
+        wb.Sheets[targetSheetName] = newWs;
+        XLSX.writeFile(wb, filename, { bookType: 'biff8' });
       } else {
-        const csvLines = aoa.map(row =>
+        const csvLines = [sheet2Headers, ...dataRows].map(row =>
           row.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')
         ).join('\r\n');
         const blob = new Blob(['\uFEFF' + csvLines], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = filename.replace(/\.xlsx$/, '.csv');
+        a.download = filename.replace(/\.xls$/, '.csv');
         document.body.appendChild(a);
         a.click();
         a.remove();
         URL.revokeObjectURL(url);
-        alert('⚠️ 当前处于离线状态，Excel 组件未加载，已为您降级导出兼容的 CSV 文件。');
+        alert('⚠️ 当前处于离线状态，Excel 组件未加载，已为您降级导出 CSV 文件。');
       }
     }
 

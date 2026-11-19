@@ -801,12 +801,6 @@
           <button onclick="closeDailyReportModal()" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-medium cursor-pointer">
             关闭
           </button>
-          <button id="downloadSplitDailyReportBtn" onclick="downloadDailyReportSplitByDay()"
-            class="hidden px-4 py-2 rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-semibold items-center gap-1.5 cursor-pointer whitespace-nowrap"
-            title="按每个工作日单独生成一个 .xls 文件（每天序号从 1 开始）">
-            <i class="fa-solid fa-layer-group"></i>
-            <span>按天分别下载 (.xls)</span>
-          </button>
           <button id="downloadDailyReportBtn" onclick="downloadDailyReportXlsx()"
             class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm cursor-pointer whitespace-nowrap">
             <i class="fa-solid fa-download"></i>
@@ -3868,7 +3862,6 @@
       const summaryBadge = document.getElementById('dailyReportSummaryBadge');
       const downloadBtn = document.getElementById('downloadDailyReportBtn');
       const downloadBtnLabel = document.getElementById('downloadDailyReportBtnLabel');
-      const splitBtn = document.getElementById('downloadSplitDailyReportBtn');
 
       const allRangeDates = getTaskDateList(startStr, endStr);
       let skippedWeekendDays = 0;
@@ -3887,20 +3880,20 @@
       }
 
       const extracted = [];
-      let seqCounter = 1;
       validDates.forEach(dStr => {
         const dayTasks = state.tasks.filter(t =>
           isMemberInvolvedInTask(memberId, t) &&
           t.startDate <= dStr &&
           t.endDate >= dStr
         );
+        let daySeq = 1;
         dayTasks.forEach(t => {
           const hours = getTaskHoursOnDate(t, dStr);
           if (hours <= 0) return;
           const projectCode = t.projectCode || getProjectCode(t.project);
           const content = (t.note && t.note.trim()) ? t.note.trim() : t.title;
           extracted.push({
-            seq: seqCounter++,
+            seq: daySeq++,
             taskId: t.id,
             projectCode,
             projectName: t.project || '',
@@ -3920,17 +3913,9 @@
         : `${distinctWorkDays} 个工作日 · 共 ${dailyReportRows.length} 条 · 合计 ${totalHours}h`;
 
       if (downloadBtnLabel) {
-        downloadBtnLabel.textContent = startStr === endStr ? '下载当日日报 (.xls)' : '合并下载周期日报 (.xls)';
-      }
-
-      if (splitBtn) {
-        if (distinctWorkDays > 1) {
-          splitBtn.classList.remove('hidden');
-          splitBtn.classList.add('inline-flex');
-        } else {
-          splitBtn.classList.add('hidden');
-          splitBtn.classList.remove('inline-flex');
-        }
+        downloadBtnLabel.textContent = distinctWorkDays > 1
+          ? `下载周期日报 (共${distinctWorkDays}份.xls)`
+          : '下载当日日报 (.xls)';
       }
 
       if (dailyReportRows.length === 0) {
@@ -4027,22 +4012,7 @@
       }
     }
 
-    function downloadDailyReportXlsx() {
-      if (!dailyReportRows || dailyReportRows.length === 0) return;
-      const memberId = document.getElementById('dailyReportMemberSelect').value;
-      const member = state.members.find(m => m.id === memberId);
-      const memberName = member ? member.name : '成员';
-      const startStr = document.getElementById('dailyReportStartInput').value || getTodayStr();
-      const endStr = document.getElementById('dailyReportEndInput').value || startStr;
-
-      const filename = startStr === endStr
-        ? `日报_${memberName}_${startStr}.xls`
-        : `日报_${memberName}_${startStr}至${endStr}.xls`;
-
-      exportRowsToErpXls(dailyReportRows, filename);
-    }
-
-    async function downloadDailyReportSplitByDay() {
+    async function downloadDailyReportXlsx() {
       if (!dailyReportRows || dailyReportRows.length === 0) return;
       const memberId = document.getElementById('dailyReportMemberSelect').value;
       const member = state.members.find(m => m.id === memberId);
@@ -4054,9 +4024,14 @@
         byDate.get(r.date).push(r);
       });
 
-      for (const [dStr, rows] of byDate.entries()) {
+      let i = 0;
+      const entries = Array.from(byDate.entries());
+      for (const [dStr, rows] of entries) {
         exportRowsToErpXls(rows, `日报_${memberName}_${dStr}.xls`);
-        await new Promise(res => setTimeout(res, 240));
+        i++;
+        if (i < entries.length) {
+          await new Promise(res => setTimeout(res, 240));
+        }
       }
     }
 

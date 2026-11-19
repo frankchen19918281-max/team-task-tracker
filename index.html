@@ -7,6 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     body {
@@ -156,6 +157,14 @@
             <i class="fa-solid fa-gear"></i>
           </button>
         </div>
+
+        <!-- Daily Report Export Button -->
+        <button id="dailyReportBtn" onclick="openDailyReportModal()"
+          class="px-3 py-2 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition shadow-xs cursor-pointer"
+          title="根据当日排期一键生成并下载 ERP 日报模板 (.xlsx)">
+          <i class="fa-solid fa-file-excel"></i>
+          <span>生成当日日报</span>
+        </button>
 
         <!-- Export Image for Boss Button -->
         <button id="exportImgBtn" onclick="exportScheduleAsImage()"
@@ -313,7 +322,7 @@
 
       <!-- Scrollable Matrix Table -->
       <div id="matrixScrollWrapper" class="overflow-x-auto">
-        <table id="matrixTableElement" class="w-full border-collapse min-w-[980px]">
+        <table id="matrixTableElement" class="w-full table-fixed border-collapse min-w-[880px]">
           <thead>
             <tr id="matrixHeaderRow" class="bg-slate-50/60 border-b border-slate-200 text-left">
               <!-- Populated by JS -->
@@ -395,46 +404,57 @@
       <form id="taskForm" onsubmit="saveTaskForm(event)" class="p-6 space-y-4 text-sm max-h-[82vh] overflow-y-auto">
         <input type="hidden" id="taskIdInput">
 
-        <!-- 1. 项目名称 -->
+        <!-- 1. 项目名称 (ERP标准) -->
         <div class="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/90 space-y-2">
-          <div class="flex items-center justify-between">
+          <div class="flex items-center justify-between gap-2">
             <label class="block text-xs font-bold text-slate-800">
-              1. 项目名称 <span class="text-rose-500">*</span>
+              1. 项目名称 (ERP) <span class="text-rose-500">*</span>
+              <span id="taskProjectCodeHint" class="ml-1.5 px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-mono text-[10px] font-semibold"></span>
             </label>
-            <button type="button" onclick="toggleQuickAddProject()" class="text-xs text-indigo-600 hover:text-indigo-700 font-semibold flex items-center gap-1 cursor-pointer">
-              <i class="fa-solid fa-plus-circle"></i> 录入新项目名称
+            <button type="button" onclick="toggleQuickAddProject()" class="text-xs text-indigo-600 hover:text-indigo-700 font-semibold flex items-center gap-1 cursor-pointer shrink-0">
+              <i class="fa-solid fa-plus-circle"></i> 按模板录入新项目
             </button>
           </div>
 
-          <select id="taskProjectSelect" required class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:border-indigo-500 outline-none bg-white font-medium text-slate-800 cursor-pointer">
+          <select id="taskProjectSelect" required onchange="handleTaskProjectChange(this.value)" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:border-indigo-500 outline-none bg-white font-medium text-slate-800 cursor-pointer text-xs">
           </select>
 
-          <div id="quickAddProjectBox" class="hidden pt-1 flex items-center gap-2">
-            <input type="text" id="newProjectNameInput" placeholder="输入新项目名称，回车或点添加即可选上..."
-              onkeydown="if(event.key==='Enter'){event.preventDefault();confirmQuickAddProject();}"
-              class="flex-1 px-3 py-1.5 rounded-lg border border-indigo-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-200">
-            <button type="button" onclick="confirmQuickAddProject()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shrink-0 cursor-pointer">
-              添加并选中
-            </button>
+          <div id="quickAddProjectBox" class="hidden pt-2 border-t border-slate-200/80 space-y-2">
+            <div class="text-[11px] font-semibold text-indigo-700">按 ERP 模板录入新项目（3项固定内容）：</div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <input type="text" id="newProjectCodeInput" placeholder="项目编号 (如: XM20261117267)"
+                class="px-3 py-1.5 rounded-lg border border-indigo-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-200 font-mono">
+              <input type="text" id="newProjectTaskInput" placeholder="任务名称 (如: 方案设计)"
+                onkeydown="if(event.key==='Enter'){event.preventDefault();confirmQuickAddProject();}"
+                class="px-3 py-1.5 rounded-lg border border-indigo-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-200">
+            </div>
+            <div class="flex items-center gap-2">
+              <input type="text" id="newProjectNameInput" placeholder="项目名称 (与ERP系统一致的完整名称)"
+                onkeydown="if(event.key==='Enter'){event.preventDefault();confirmQuickAddProject();}"
+                class="flex-1 px-3 py-1.5 rounded-lg border border-indigo-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-200">
+              <button type="button" onclick="confirmQuickAddProject()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shrink-0 cursor-pointer">
+                添加并选中
+              </button>
+            </div>
           </div>
         </div>
 
-        <!-- 2. 工作内容 -->
+        <!-- 2. 任务名称 (ERP固定内容) -->
         <div class="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/90 space-y-2">
           <div class="flex items-center justify-between">
             <label class="block text-xs font-bold text-slate-800">
-              2. 工作内容 <span class="text-rose-500">*</span>
+              2. 任务名称 (ERP固定) <span class="text-rose-500">*</span>
             </label>
             <button type="button" onclick="toggleQuickAddWorkItem()" class="text-xs text-indigo-600 hover:text-indigo-700 font-semibold flex items-center gap-1 cursor-pointer">
-              <i class="fa-solid fa-plus-circle"></i> 录入新工作内容
+              <i class="fa-solid fa-plus-circle"></i> 录入新任务名称
             </button>
           </div>
 
-          <select id="taskTitleSelect" required class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:border-indigo-500 outline-none bg-white font-medium text-slate-800 cursor-pointer">
+          <select id="taskTitleSelect" required class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:border-indigo-500 outline-none bg-white font-medium text-slate-800 cursor-pointer text-xs">
           </select>
 
           <div id="quickAddWorkItemBox" class="hidden pt-1 flex items-center gap-2">
-            <input type="text" id="newWorkItemNameInput" placeholder="输入新的工作内容，回车或点添加即可选上..."
+            <input type="text" id="newWorkItemNameInput" placeholder="输入新的ERP任务名称，回车或点添加即可选上..."
               onkeydown="if(event.key==='Enter'){event.preventDefault();confirmQuickAddWorkItem();}"
               class="flex-1 px-3 py-1.5 rounded-lg border border-indigo-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-200">
             <button type="button" onclick="confirmQuickAddWorkItem()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shrink-0 cursor-pointer">
@@ -525,10 +545,12 @@
           </div>
         </div>
 
-        <!-- Note -->
+        <!-- Note / Daily Report Content -->
         <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">补充说明 / 卡点原因 (选填)</label>
-          <textarea id="taskNoteInput" rows="2" placeholder="选填：写明具体交付细节，或遇到什么困难需要协调..."
+          <label class="block text-xs font-bold text-slate-800 mb-1">
+            报工内容 <span class="text-[11px] font-normal text-indigo-600">（用于直接生成当日 ERP 日报）</span>
+          </label>
+          <textarea id="taskNoteInput" rows="2" placeholder="填写具体工作内容（如：整理并完善项目方案及技术文本），生成当日日报时将自动填入“报工内容”列..."
             class="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:border-indigo-500 outline-none text-xs"></textarea>
         </div>
 
@@ -614,58 +636,66 @@
     </div>
   </div>
 
-  <!-- ================= MODAL 3: PROJECT NAMES & WORK CONTENTS DICTIONARY MANAGER ================= -->
+  <!-- ================= MODAL 3: ERP PROJECT & TASK DICTIONARY MANAGER ================= -->
   <div id="dictModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-3xl w-full shadow-xl border border-slate-200 overflow-hidden">
+    <div class="bg-white rounded-2xl max-w-4xl w-full shadow-xl border border-slate-200 overflow-hidden">
       <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
         <div>
           <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
             <i class="fa-solid fa-folder-plus text-indigo-600"></i>
-            <span>管理【项目名称】与【工作内容】下拉选项库</span>
+            <span>管理【ERP 项目库】与【任务名称库】</span>
           </h3>
-          <p class="text-xs text-slate-500 mt-0.5">已被任务使用中的项目或工作内容受防误删保护，避免误删正在排期的选项</p>
+          <p class="text-xs text-slate-500 mt-0.5">项目编号、项目名称、任务名称与 ERP 系统保持一致；正在使用的项目受防误删保护</p>
         </div>
         <button onclick="closeDictModal()" class="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
           <i class="fa-solid fa-xmark text-lg"></i>
         </button>
       </div>
 
-      <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[75vh] overflow-y-auto">
-        <!-- Left Column: Project Names -->
-        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col gap-3">
+      <div class="p-6 grid grid-cols-1 lg:grid-cols-12 gap-5 max-h-[75vh] overflow-y-auto">
+        <!-- Left Column: ERP Projects (Code + Name + TaskName) -->
+        <div class="lg:col-span-8 bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col gap-3">
           <div class="font-bold text-xs text-slate-800 flex items-center justify-between">
-            <span><i class="fa-solid fa-briefcase text-indigo-600 mr-1.5"></i>1. 项目名称列表</span>
+            <span><i class="fa-solid fa-briefcase text-indigo-600 mr-1.5"></i>1. ERP 项目清单（项目编号 + 项目名称 + 任务名称）</span>
             <span id="projectOptionCount" class="text-[11px] text-slate-400 font-normal"></span>
           </div>
 
-          <form onsubmit="addDictProject(event)" class="flex gap-2">
-            <input type="text" id="dictNewProjectInput" required placeholder="输入新项目名称..."
-              class="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none focus:border-indigo-500">
-            <button type="submit" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shrink-0 cursor-pointer">
-              + 录入项目
-            </button>
+          <form onsubmit="addDictProject(event)" class="bg-white p-2.5 rounded-lg border border-indigo-200/80 space-y-2">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <input type="text" id="dictNewProjectCodeInput" required placeholder="项目编号 (如: XM20261117267)"
+                class="px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none focus:border-indigo-500 font-mono">
+              <input type="text" id="dictNewProjectTaskInput" required placeholder="默认任务名称 (如: 方案设计)"
+                class="px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none focus:border-indigo-500">
+            </div>
+            <div class="flex gap-2">
+              <input type="text" id="dictNewProjectInput" required placeholder="项目名称 (与ERP系统一致的完整名称)..."
+                class="flex-1 px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none focus:border-indigo-500">
+              <button type="submit" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shrink-0 cursor-pointer">
+                + 按模板录入
+              </button>
+            </div>
           </form>
 
-          <div id="dictProjectList" class="space-y-1.5 max-h-[320px] overflow-y-auto pr-1">
+          <div id="dictProjectList" class="space-y-2 max-h-[340px] overflow-y-auto pr-1">
           </div>
         </div>
 
-        <!-- Right Column: Work Contents -->
-        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col gap-3">
+        <!-- Right Column: ERP Task Names -->
+        <div class="lg:col-span-4 bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col gap-3">
           <div class="font-bold text-xs text-slate-800 flex items-center justify-between">
-            <span><i class="fa-solid fa-list-check text-emerald-600 mr-1.5"></i>2. 工作内容列表</span>
+            <span><i class="fa-solid fa-list-check text-emerald-600 mr-1.5"></i>2. ERP 任务名称库</span>
             <span id="workContentOptionCount" class="text-[11px] text-slate-400 font-normal"></span>
           </div>
 
           <form onsubmit="addDictWorkContent(event)" class="flex gap-2">
-            <input type="text" id="dictNewWorkContentInput" required placeholder="输入常用工作内容..."
+            <input type="text" id="dictNewWorkContentInput" required placeholder="输入ERP任务名称..."
               class="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none focus:border-indigo-500">
             <button type="submit" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shrink-0 cursor-pointer">
-              + 录入工作内容
+              + 录入
             </button>
           </form>
 
-          <div id="dictWorkContentList" class="space-y-1.5 max-h-[320px] overflow-y-auto pr-1">
+          <div id="dictWorkContentList" class="space-y-1.5 max-h-[340px] overflow-y-auto pr-1">
           </div>
         </div>
       </div>
@@ -674,6 +704,83 @@
         <button onclick="closeDictModal()" class="px-5 py-1.5 rounded-xl bg-slate-800 text-white text-xs font-semibold hover:bg-slate-700 cursor-pointer">
           完成返回
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL 4: DAILY ERP REPORT GENERATOR ================= -->
+  <div id="dailyReportModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-5xl w-full shadow-xl border border-slate-200 overflow-hidden">
+      <div class="px-6 py-4 bg-amber-50/70 border-b border-amber-200/80 flex items-center justify-between">
+        <div>
+          <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+            <i class="fa-solid fa-file-excel text-emerald-600"></i>
+            <span>生成当日 ERP 日报模板 (.xlsx)</span>
+          </h3>
+          <p class="text-xs text-slate-600 mt-0.5">自动从每日排期中提取报工日期、报工时长与报工内容，可直接微调后下载与 ERP 模板同格式的 Excel 文件</p>
+        </div>
+        <button onclick="closeDailyReportModal()" class="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4 max-h-[78vh] overflow-y-auto">
+        <!-- Filters -->
+        <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+          <div class="flex flex-wrap items-center gap-4">
+            <div class="flex items-center gap-2">
+              <label class="text-xs font-bold text-slate-700">报工人员:</label>
+              <select id="dailyReportMemberSelect" onchange="renderDailyReportPreview()"
+                class="px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-800 focus:outline-none focus:border-indigo-500 cursor-pointer">
+              </select>
+            </div>
+            <div class="flex items-center gap-2">
+              <label class="text-xs font-bold text-slate-700">报工日期:</label>
+              <input type="date" id="dailyReportDateInput" onchange="renderDailyReportPreview()"
+                class="px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-800 focus:outline-none focus:border-indigo-500">
+            </div>
+          </div>
+          <div id="dailyReportSummaryBadge" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-100">
+            共 0 项 · 合计 0h
+          </div>
+        </div>
+
+        <!-- Preview Table -->
+        <div class="border border-slate-200 rounded-xl overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="bg-slate-100 text-slate-700 border-b border-slate-200">
+                <th class="py-2.5 px-3 font-bold w-14 text-center">序号</th>
+                <th class="py-2.5 px-3 font-bold whitespace-nowrap">项目编号##xmbh</th>
+                <th class="py-2.5 px-3 font-bold whitespace-nowrap">任务名称##rwmc</th>
+                <th class="py-2.5 px-3 font-bold whitespace-nowrap">报工日期##bgrq</th>
+                <th class="py-2.5 px-3 font-bold whitespace-nowrap text-center">报工时长（h）##bgsch</th>
+                <th class="py-2.5 px-3 font-bold min-w-[260px]">报工内容##bgnr <span class="font-normal text-slate-400">(可微调)</span></th>
+                <th class="py-2.5 px-3 font-bold whitespace-nowrap text-slate-400">类型##lx</th>
+                <th class="py-2.5 px-3 font-bold whitespace-nowrap text-slate-400">项目总工##xmzg</th>
+              </tr>
+            </thead>
+            <tbody id="dailyReportTableBody" class="divide-y divide-slate-100 bg-white">
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
+        <span class="text-xs text-slate-500">
+          <i class="fa-solid fa-circle-info text-indigo-500 mr-1"></i>
+          模板列结构与 ERP 导入模板完全一致；“类型”与“项目总工”按要求自动留空
+        </span>
+        <div class="flex items-center gap-2">
+          <button onclick="closeDailyReportModal()" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-medium cursor-pointer">
+            关闭
+          </button>
+          <button id="downloadDailyReportBtn" onclick="downloadDailyReportXlsx()"
+            class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm cursor-pointer">
+            <i class="fa-solid fa-download"></i>
+            <span>下载当日日报 (.xlsx)</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -905,8 +1012,112 @@
     const DEFAULT_GH_REPO = 'team-task-tracker';
     const DEFAULT_GH_BRANCH = 'main';
 
+    const DEFAULT_ERP_PROJECTS = [
+      { code: 'XM20261117267', name: '常熟市国家农业科技园古里镇示范基地更新设计技术服务合同', taskName: '方案设计', alias: '' },
+      { code: 'HX-2022-12-008', name: 'Y江下游水电开发对雅尼湿地生态影响及保护规划研究', taskName: '成果文本编制及修改', alias: '雅尼项目' },
+      { code: 'XM20260928250', name: '腾讯深圳总部项目DY01-01街坊小微湿地专项设计服务', taskName: '概念方案设计', alias: '腾讯小微湿地项目' },
+      { code: 'XM20260928249', name: '常熟（南湖湿地公园）司法生态修复基地多功能复合型小微湿地示范工程设计', taskName: '项目设计', alias: '' },
+      { code: 'XM20260713222', name: 'A景区一体化提升之尚湖景区重点区域生态景观系统提升工程', taskName: '项目施工', alias: '尚湖景观提升项目' },
+      { code: 'XM20251201156', name: '包头市三北工程退化湿地修复设计项目', taskName: '开展项目设计', alias: '包头三北项目-赛罕塔拉片区' },
+      { code: 'XM20250813110', name: '沙家浜湿地公园保护修复与管理项目实施方案', taskName: '鸟类栖息地项目设计', alias: '' },
+      { code: 'XM2025061392', name: '湖北省武汉市江汉平原南部湖泊湿地生态保护修复项目勘察、设计', taskName: '开展项目设计', alias: '沉湖下红星垸鸟类栖息地修复项目' },
+      { code: 'XM2025030327', name: '湖北石首麋鹿国家级自然保护区2025年中央财政湿地保护与恢复项目实施方案', taskName: '项目后续服务', alias: '' },
+      { code: '2024-238', name: '基于萤火虫复育需求的生境恢复主导型小微湿地关键技术研究', taskName: '材料编制', alias: '萤火虫科技项目' },
+      { code: '2024-098', name: '福建莆田木兰溪口湿地公园保护修复可行性研究报告', taskName: '可研报告修改', alias: '' },
+      { code: 'HX-2023-11-080', name: '明溪县王桥生态观鸟景区旅游基础设施建设项目一期 生态景观工程设计及后期现场服务等技术协作项目', taskName: '设计变更材料', alias: '王桥项目' }
+    ];
+
+    const DEFAULT_ERP_TASK_NAMES = Array.from(new Set(DEFAULT_ERP_PROJECTS.map(p => p.taskName)));
+
+    const LEGACY_WORK_CONTENTS = new Set([
+      '苗木种植', '材料整合上传', '消落带，汇口图纸', '项目变更材料', 'cad图纸绘制', '文本编制'
+    ]);
+
+    function getErpProjectByName(projectName, erpList = null) {
+      const list = erpList || (typeof state !== 'undefined' && Array.isArray(state.erpProjects) ? state.erpProjects : DEFAULT_ERP_PROJECTS);
+      if (!projectName) return null;
+      return list.find(p => p.name === projectName || (p.alias && p.alias === projectName)) || null;
+    }
+
+    function getProjectCode(projectName) {
+      const found = getErpProjectByName(projectName);
+      return found ? (found.code || '') : '';
+    }
+
+    function migrateStateToErp(data) {
+      if (!data || typeof data !== 'object') return data;
+      if (data.erpSchemaVersion === 1 && Array.isArray(data.erpProjects)) {
+        return data;
+      }
+
+      const aliasMap = new Map();
+      const nameMap = new Map();
+      DEFAULT_ERP_PROJECTS.forEach(p => {
+        if (p.alias) aliasMap.set(p.alias, p);
+        nameMap.set(p.name, p);
+      });
+
+      const mergedErpProjects = DEFAULT_ERP_PROJECTS.map(p => ({ ...p }));
+      if (Array.isArray(data.erpProjects)) {
+        data.erpProjects.forEach(ep => {
+          if (ep && ep.name && !nameMap.has(ep.name) && !aliasMap.has(ep.name)) {
+            mergedErpProjects.push({
+              code: ep.code || '',
+              name: ep.name,
+              taskName: ep.taskName || '开展项目设计',
+              alias: ep.alias || ''
+            });
+            nameMap.set(ep.name, ep);
+          }
+        });
+      }
+      if (Array.isArray(data.projectOptions)) {
+        data.projectOptions.forEach(pName => {
+          if (pName && !nameMap.has(pName) && !aliasMap.has(pName)) {
+            const custom = { code: '', name: pName, taskName: '开展项目设计', alias: '' };
+            mergedErpProjects.push(custom);
+            nameMap.set(pName, custom);
+          }
+        });
+      }
+
+      const migrateTaskObj = (t) => {
+        if (!t || typeof t !== 'object') return;
+        const mapped = aliasMap.get(t.project) || nameMap.get(t.project);
+        if (mapped) {
+          t.project = mapped.name;
+          if (!t.projectCode && mapped.code) t.projectCode = mapped.code;
+          if (LEGACY_WORK_CONTENTS.has(t.title) || (t.title && !DEFAULT_ERP_TASK_NAMES.includes(t.title))) {
+            if (!t.note) {
+              t.note = t.title;
+            } else if (!t.note.includes(t.title)) {
+              t.note = `${t.title}；${t.note}`;
+            }
+            t.title = mapped.taskName;
+          }
+        }
+      };
+
+      if (Array.isArray(data.tasks)) data.tasks.forEach(migrateTaskObj);
+      if (Array.isArray(data.trash)) {
+        data.trash.forEach(item => {
+          if (item && item.trashType === 'task' && item.data) {
+            migrateTaskObj(item.data);
+          }
+        });
+      }
+
+      data.erpProjects = mergedErpProjects;
+      data.projectOptions = mergedErpProjects.map(p => p.name);
+      data.workContentOptions = [...DEFAULT_ERP_TASK_NAMES];
+      data.erpSchemaVersion = 1;
+      return data;
+    }
+
     function getInitialDemoData() {
-      return {
+      const demo = {
+        erpSchemaVersion: 1,
+        erpProjects: DEFAULT_ERP_PROJECTS.map(p => ({ ...p })),
         currentActorId: 'm1',
         selectedPersonalMemberId: 'all',
         viewMode: 'matrix',
@@ -1204,6 +1415,8 @@
           }
         ]
       };
+      delete demo.erpSchemaVersion;
+      return migrateStateToErp(demo);
     }
 
     let loadedFromLegacyDemo = false;
@@ -1368,6 +1581,7 @@
         const remoteData = JSON.parse(remoteJsonStr);
 
         if (remoteData && Array.isArray(remoteData.members) && Array.isArray(remoteData.tasks)) {
+          migrateStateToErp(remoteData);
           // Preserve current user's local view preferences while syncing shared team data
           const localActor = state.currentActorId;
           const localView = state.viewMode;
@@ -1575,7 +1789,7 @@
             if (!Array.isArray(parsed.workContentOptions)) parsed.workContentOptions = getInitialDemoData().workContentOptions;
             if (!Array.isArray(parsed.trash)) parsed.trash = [];
             if (typeof parsed.safeLock !== 'boolean') parsed.safeLock = false;
-            return parsed;
+            return migrateStateToErp(parsed);
           }
         }
       } catch (e) {
@@ -2004,7 +2218,7 @@
 
       const headerRow = document.getElementById('matrixHeaderRow');
       let headerHtml = `
-        <th class="sticky left-0 z-20 bg-slate-50 px-4 py-3 w-56 min-w-[215px] border-r border-slate-200 shadow-[1px_0_0_0_#e2e8f0]">
+        <th class="sticky left-0 z-20 bg-slate-50 px-3 py-2.5 w-44 min-w-[176px] border-r border-slate-200 shadow-[1px_0_0_0_#e2e8f0]">
           <div class="flex items-center justify-between">
             <span class="text-xs font-bold text-slate-700">负责人 / 项目成员</span>
             <button onclick="openMemberModal()" class="no-export text-[11px] text-indigo-600 hover:underline font-medium cursor-pointer">
@@ -2021,7 +2235,7 @@
           : (d.isWeekend ? 'bg-slate-100/70 text-slate-500' : 'text-slate-700');
 
         headerHtml += `
-          <th class="px-2.5 py-2.5 min-w-[168px] border-r border-slate-200/80 text-center ${todayHighlight}">
+          <th class="px-1.5 py-2 w-[142px] min-w-[142px] max-w-[142px] border-r border-slate-200/80 text-center ${todayHighlight}">
             <div class="flex items-center justify-center gap-1 text-xs font-bold">
               <span>${d.monthDay}</span>
               <span class="text-[11px] font-normal ${d.isToday ? 'bg-indigo-600 text-white px-1.5 py-0.2 rounded-full' : 'text-slate-400'}">
@@ -2103,26 +2317,26 @@
 
           bodyHtml += `
             <td onclick="handleCellClick('${member.id}', '${d.dateStr}', event)"
-                class="p-2 border-r border-slate-200/70 align-top min-h-[110px] cursor-pointer hover:bg-indigo-50/30 transition relative cell-hover ${weekendBg} ${todayBorder}">
+                class="p-1 w-[142px] min-w-[142px] max-w-[142px] border-r border-slate-200/70 align-top cursor-pointer hover:bg-indigo-50/30 transition relative cell-hover ${weekendBg} ${todayBorder}">
               
               <!-- Cell Header: Load Progress Bar & Total Hours (unchanged when tasks marked done) -->
-              <div class="flex items-center justify-between gap-1 mb-1.5" title="${cellHoursTooltip}">
+              <div class="flex items-center justify-between gap-1 mb-1" title="${cellHoursTooltip}">
                 <div class="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                   <div class="h-full ${loadStyle.barColor} transition-all duration-300" style="width: ${ratioPct}%"></div>
                 </div>
-                <span class="text-[11px] font-medium ${dayStats.totalHours > member.capacity ? 'text-rose-600 font-bold' : (dayStats.totalHours > 0 ? 'text-slate-600' : 'text-slate-300')}">
+                <span class="text-[10px] font-medium leading-none ${dayStats.totalHours > member.capacity ? 'text-rose-600 font-bold' : (dayStats.totalHours > 0 ? 'text-slate-600' : 'text-slate-300')}">
                   ${dayStats.totalHours}h/${member.capacity}h
                 </span>
               </div>
 
               <!-- Task Pills inside the cell -->
-              <div class="space-y-1.5">
+              <div class="space-y-1">
                 ${dayStats.tasks.map(task => renderMatrixTaskPill(task, member.id, d.dateStr)).join('')}
               </div>
 
               <!-- Hover "+ 记任务" hint -->
-              <div class="add-btn-hint opacity-0 transition-opacity mt-1.5 text-center">
-                <span class="inline-block text-[11px] text-indigo-600 bg-indigo-50/90 hover:bg-indigo-100 px-2 py-0.5 rounded border border-indigo-200/60">
+              <div class="add-btn-hint opacity-0 transition-opacity mt-1 text-center leading-none">
+                <span class="inline-block text-[10px] text-indigo-600 bg-indigo-50/90 hover:bg-indigo-100 px-2 py-0.5 rounded border border-indigo-200/60">
                   + 记任务
                 </span>
               </div>
@@ -2155,8 +2369,13 @@
         cardStyle = 'bg-white border-l-4 border-l-indigo-500 border-slate-200 text-slate-800 shadow-2xs';
       }
 
+      const erpProj = getErpProjectByName(task.project);
+      const projCode = task.projectCode || (erpProj ? erpProj.code : '');
+      const fullProjLabel = projCode ? `[${projCode}] ${task.project}` : task.project;
+      const shortProjName = (erpProj && erpProj.alias) ? erpProj.alias : task.project;
+      const compactProjLabel = projCode ? `[${projCode}] ${shortProjName}` : shortProjName;
       const projectBadge = task.project
-        ? `<div class="text-[10px] font-semibold ${isDone ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-indigo-600 bg-indigo-50/80 border-indigo-100'} px-1.5 py-0.2 rounded border inline-block mb-1 max-w-full truncate">📁 ${escapeHtml(task.project)}</div>`
+        ? `<div title="${escapeHtml(fullProjLabel)}" class="text-[10px] leading-tight font-semibold ${isDone ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-indigo-600 bg-indigo-50/80 border-indigo-100'} px-1.5 py-0.5 rounded border block w-full mb-0.5 truncate">📁 ${escapeHtml(compactProjLabel)}</div>`
         : '';
 
       const roleHintBadge = isCollaborator
@@ -2178,14 +2397,14 @@
 
       return `
         <div onclick="openTaskModal('${task.id}', event)"
-             class="task-pill-card p-1.5 rounded-lg border text-xs transition hover:shadow-xs ${cardStyle}">
+             class="task-pill-card px-1.5 py-1 rounded-lg border text-xs transition hover:shadow-xs overflow-hidden ${cardStyle}">
           ${projectBadge}
-          <div class="flex items-start justify-between gap-1">
-            <span class="font-medium leading-snug break-all line-clamp-2 ${isDone ? 'line-through decoration-emerald-500/60 text-slate-500' : ''}">${escapeHtml(task.title)}</span>
+          <div class="flex items-center justify-between gap-1" title="${escapeHtml(task.title)}">
+            <span class="font-medium text-[11px] leading-tight truncate ${isDone ? 'line-through decoration-emerald-500/60 text-slate-500' : ''}">${escapeHtml(task.title)}</span>
             ${statusIcon}
           </div>
 
-          <div class="flex items-center justify-between gap-1 mt-1.5 pt-1 border-t border-slate-100/80 text-[10px]" onclick="event.stopPropagation()">
+          <div class="flex items-center justify-between gap-1 mt-1 pt-0.5 border-t border-slate-100/80 text-[10px] leading-tight" onclick="event.stopPropagation()">
             <div class="flex items-center gap-1 min-w-0">
               ${roleHintBadge}
               <select onchange="quickChangeTaskOwner('${task.id}', this.value, event)"
@@ -2202,13 +2421,13 @@
             <button type="button"
               onclick="toggleTaskDayDone('${task.id}', '${dateStr}', event)"
               title="${isDone ? '已完成（点击取消完成状态，总时长不变）' : '点击标记已完成（当日总时长保持不变）'}"
-              class="no-export inline-flex items-center gap-1 px-1.5 py-0.5 rounded border transition cursor-pointer shrink-0 ${
+              class="no-export inline-flex items-center gap-0.5 px-1 py-0.5 rounded border transition cursor-pointer shrink-0 ${
                 isDone
                   ? 'bg-emerald-100/80 border-emerald-300 text-emerald-700 font-semibold hover:bg-emerald-200/70'
                   : 'bg-slate-50 border-slate-200 text-slate-500 font-medium hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700'
               }">
               <i class="${isDone ? 'fa-solid fa-square-check text-emerald-600' : 'fa-regular fa-square'} text-[10px]"></i>
-              <span>已完成</span>
+              <span>${isDone ? '已完成' : '完成'}</span>
             </button>
             ${isDone
               ? '<span class="export-only items-center gap-0.5 text-[10px] font-semibold text-emerald-600"><i class="fa-solid fa-circle-check text-[10px]"></i>已完成</span>'
@@ -2223,7 +2442,7 @@
                 onfocus="this.select()"
                 onchange="updateTaskDayHours('${task.id}', '${dateStr}', this.value, event)"
                 onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
-                class="day-hours-input w-7 text-center text-[11px] font-bold ${isDone ? 'text-emerald-700' : 'text-indigo-600'} bg-transparent focus:outline-none focus:bg-indigo-50/60 py-0.5">
+                class="day-hours-input w-5 text-center text-[10px] font-bold ${isDone ? 'text-emerald-700' : 'text-indigo-600'} bg-transparent focus:outline-none focus:bg-indigo-50/60 py-0.5">
               <span class="text-[9px] ${isDone ? 'text-emerald-600' : 'text-slate-400'} pr-0.5 select-none">h</span>
               <button type="button" onclick="stepTaskDayHours('${task.id}', '${dateStr}', 1, event)"
                 class="px-1 py-0.5 text-[10px] text-slate-500 hover:bg-slate-100 hover:text-indigo-600 font-bold cursor-pointer leading-none">+</button>
@@ -2352,7 +2571,7 @@
         <div class="p-3.5 rounded-xl border ${isDone ? 'border-emerald-200 bg-emerald-50/20' : 'border-slate-200 bg-white'} hover:border-indigo-300 shadow-2xs transition space-y-2">
           <div class="flex items-start justify-between gap-2">
             <div>
-              ${task.project ? `<span class="inline-block text-[11px] px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100 font-semibold mb-1">📁 ${escapeHtml(task.project)}</span>` : ''}
+              ${task.project ? `<span title="${escapeHtml((task.projectCode || getProjectCode(task.project)) ? `[${task.projectCode || getProjectCode(task.project)}] ${task.project}` : task.project)}" class="inline-block text-[11px] px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100 font-semibold mb-1 max-w-full truncate">📁 ${escapeHtml((task.projectCode || getProjectCode(task.project)) ? `[${task.projectCode || getProjectCode(task.project)}] ${task.project}` : task.project)}</span>` : ''}
               <h4 onclick="openTaskModal('${task.id}', event)" class="font-bold ${isDone ? 'line-through text-slate-500' : 'text-slate-800'} text-xs sm:text-sm hover:text-indigo-600 cursor-pointer leading-snug">
                 ${escapeHtml(task.title)}
               </h4>
@@ -2485,15 +2704,37 @@
 
     function populateProjectSelect(selectedProject = '') {
       const sel = document.getElementById('taskProjectSelect');
+      if (!Array.isArray(state.erpProjects)) state.erpProjects = DEFAULT_ERP_PROJECTS.map(p => ({ ...p }));
       if (selectedProject && !state.projectOptions.includes(selectedProject)) {
         state.projectOptions.unshift(selectedProject);
+      }
+      if (selectedProject && !getErpProjectByName(selectedProject)) {
+        state.erpProjects.unshift({ code: '', name: selectedProject, taskName: '', alias: '' });
       }
       if (state.projectOptions.length === 0) {
         state.projectOptions.push('默认项目');
       }
-      sel.innerHTML = state.projectOptions.map(p =>
-        `<option value="${escapeHtml(p)}" ${p === selectedProject ? 'selected' : ''}>${escapeHtml(p)}</option>`
-      ).join('');
+      sel.innerHTML = state.projectOptions.map(p => {
+        const erp = getErpProjectByName(p);
+        const label = (erp && erp.code) ? `[${erp.code}] ${p}` : p;
+        return `<option value="${escapeHtml(p)}" ${p === selectedProject ? 'selected' : ''}>${escapeHtml(label)}</option>`;
+      }).join('');
+      updateTaskProjectCodeHint(sel.value);
+    }
+
+    function updateTaskProjectCodeHint(projectName) {
+      const hintEl = document.getElementById('taskProjectCodeHint');
+      if (!hintEl) return;
+      const code = getProjectCode(projectName);
+      hintEl.textContent = code ? `编号: ${code}` : '未填编号';
+    }
+
+    function handleTaskProjectChange(projectName) {
+      updateTaskProjectCodeHint(projectName);
+      const erp = getErpProjectByName(projectName);
+      if (erp && erp.taskName) {
+        populateWorkContentSelect(erp.taskName);
+      }
     }
 
     function populateWorkContentSelect(selectedTitle = '') {
@@ -2502,7 +2743,7 @@
         state.workContentOptions.unshift(selectedTitle);
       }
       if (state.workContentOptions.length === 0) {
-        state.workContentOptions.push('常规工作推进');
+        state.workContentOptions.push('开展项目设计');
       }
       sel.innerHTML = state.workContentOptions.map(w =>
         `<option value="${escapeHtml(w)}" ${w === selectedTitle ? 'selected' : ''}>${escapeHtml(w)}</option>`
@@ -2513,20 +2754,42 @@
       const box = document.getElementById('quickAddProjectBox');
       box.classList.toggle('hidden');
       if (!box.classList.contains('hidden')) {
-        document.getElementById('newProjectNameInput').focus();
+        document.getElementById('newProjectCodeInput').focus();
       }
     }
 
     function confirmQuickAddProject() {
-      const input = document.getElementById('newProjectNameInput');
-      const val = input.value.trim();
-      if (!val) return;
-      if (!state.projectOptions.includes(val)) {
-        state.projectOptions.unshift(val);
-        saveState();
+      const codeInput = document.getElementById('newProjectCodeInput');
+      const nameInput = document.getElementById('newProjectNameInput');
+      const taskInput = document.getElementById('newProjectTaskInput');
+      const code = codeInput ? codeInput.value.trim() : '';
+      const name = nameInput.value.trim();
+      const taskName = taskInput ? taskInput.value.trim() : '';
+      if (!name) return;
+      if (!code || !taskName) {
+        alert('请按 ERP 模板填写完整：项目编号、项目名称、任务名称（3项固定内容）！');
+        return;
       }
-      populateProjectSelect(val);
-      input.value = '';
+      if (!Array.isArray(state.erpProjects)) state.erpProjects = [];
+      const existing = getErpProjectByName(name);
+      if (existing) {
+        existing.code = code;
+        existing.taskName = taskName;
+      } else {
+        state.erpProjects.unshift({ code, name, taskName, alias: '' });
+      }
+      if (!state.projectOptions.includes(name)) {
+        state.projectOptions.unshift(name);
+      }
+      if (!state.workContentOptions.includes(taskName)) {
+        state.workContentOptions.unshift(taskName);
+      }
+      saveState();
+      populateProjectSelect(name);
+      populateWorkContentSelect(taskName);
+      if (codeInput) codeInput.value = '';
+      nameInput.value = '';
+      if (taskInput) taskInput.value = '';
       document.getElementById('quickAddProjectBox').classList.add('hidden');
     }
 
@@ -2637,8 +2900,10 @@
 
         document.getElementById('taskModalTitle').innerHTML = `<i class="fa-solid fa-plus-circle text-indigo-600"></i><span>记录 / 派发任务</span>`;
         document.getElementById('taskIdInput').value = '';
-        populateProjectSelect(state.projectOptions[0] || '');
-        populateWorkContentSelect(state.workContentOptions[0] || '');
+        const defaultProj = state.projectOptions[0] || '';
+        populateProjectSelect(defaultProj);
+        const defaultErp = getErpProjectByName(defaultProj);
+        populateWorkContentSelect((defaultErp && defaultErp.taskName) || state.workContentOptions[0] || '');
         document.getElementById('taskAssigneeInput').value = targetMember;
         currentEditingCollaborators = [];
         currentEditingDailyHours = {};
@@ -2782,6 +3047,7 @@
 
       const id = document.getElementById('taskIdInput').value;
       const project = document.getElementById('taskProjectSelect').value.trim();
+      const projectCode = getProjectCode(project);
       const title = document.getElementById('taskTitleSelect').value.trim();
       const memberId = document.getElementById('taskAssigneeInput').value;
       const collaborators = currentEditingCollaborators.filter(cid => cid !== memberId);
@@ -2836,6 +3102,7 @@
           const updatedTask = {
             ...prevTask,
             project,
+            projectCode,
             title,
             memberId,
             collaborators,
@@ -2863,6 +3130,7 @@
         const newTask = {
           id: 't_' + Date.now(),
           project,
+          projectCode,
           title,
           memberId,
           collaborators,
@@ -2932,21 +3200,31 @@
     }
 
     function renderDictModalLists() {
+      if (!Array.isArray(state.erpProjects)) state.erpProjects = DEFAULT_ERP_PROJECTS.map(p => ({ ...p }));
       document.getElementById('projectOptionCount').textContent = `共 ${state.projectOptions.length} 个`;
       document.getElementById('workContentOptionCount').textContent = `共 ${state.workContentOptions.length} 项`;
 
       const projContainer = document.getElementById('dictProjectList');
       projContainer.innerHTML = state.projectOptions.map((p, idx) => {
+        const erp = getErpProjectByName(p) || { code: '', name: p, taskName: '' };
         const usedCount = state.tasks.filter(t => t.project === p).length;
         return `
-          <div class="flex items-center justify-between gap-2 bg-white px-3 py-1.5 rounded-lg border border-slate-200">
-            <input type="text" value="${escapeHtml(p)}"
+          <div class="bg-white p-2.5 rounded-lg border border-slate-200 space-y-1.5">
+            <div class="flex items-center gap-2">
+              <input type="text" value="${escapeHtml(erp.code || '')}" placeholder="项目编号"
+                onchange="updateDictProjectField(${idx}, 'code', this.value)"
+                class="w-36 px-2 py-1 rounded border border-slate-200 text-[11px] font-mono text-indigo-700 bg-indigo-50/40 focus:outline-none focus:border-indigo-500">
+              <input type="text" value="${escapeHtml(erp.taskName || '')}" placeholder="默认任务名称"
+                onchange="updateDictProjectField(${idx}, 'taskName', this.value)"
+                class="flex-1 px-2 py-1 rounded border border-slate-200 text-[11px] text-emerald-700 bg-emerald-50/40 focus:outline-none focus:border-indigo-500">
+              ${usedCount > 0 ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 shrink-0">${usedCount}个任务在用</span>` : ''}
+              <button onclick="removeDictProject(${idx})" class="text-slate-400 hover:text-rose-600 p-1 cursor-pointer shrink-0" title="删除该项目">
+                <i class="fa-regular fa-trash-can text-xs"></i>
+              </button>
+            </div>
+            <input type="text" value="${escapeHtml(p)}" placeholder="项目名称"
               onchange="updateDictProject(${idx}, this.value)"
-              class="flex-1 text-xs text-slate-800 font-medium focus:outline-none focus:text-indigo-600">
-            ${usedCount > 0 ? `<span class="text-[10px] px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-600 shrink-0">${usedCount}个任务在用</span>` : ''}
-            <button onclick="removeDictProject(${idx})" class="text-slate-400 hover:text-rose-600 p-1 cursor-pointer" title="删除该项目名称">
-              <i class="fa-regular fa-trash-can text-xs"></i>
-            </button>
+              class="w-full px-2 py-1 rounded border border-slate-200 text-xs text-slate-800 font-medium focus:outline-none focus:border-indigo-500">
           </div>
         `;
       }).join('');
@@ -2960,7 +3238,7 @@
               onchange="updateDictWorkContent(${idx}, this.value)"
               class="flex-1 text-xs text-slate-800 font-medium focus:outline-none focus:text-indigo-600">
             ${usedCount > 0 ? `<span class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-600 shrink-0">${usedCount}个任务在用</span>` : ''}
-            <button onclick="removeDictWorkContent(${idx})" class="text-slate-400 hover:text-rose-600 p-1 cursor-pointer" title="删除该工作内容">
+            <button onclick="removeDictWorkContent(${idx})" class="text-slate-400 hover:text-rose-600 p-1 cursor-pointer" title="删除该任务名称">
               <i class="fa-regular fa-trash-can text-xs"></i>
             </button>
           </div>
@@ -2970,14 +3248,57 @@
 
     function addDictProject(event) {
       event.preventDefault();
-      const input = document.getElementById('dictNewProjectInput');
-      const val = input.value.trim();
-      if (!val) return;
-      if (!state.projectOptions.includes(val)) {
-        state.projectOptions.unshift(val);
-        saveState();
+      const codeInput = document.getElementById('dictNewProjectCodeInput');
+      const nameInput = document.getElementById('dictNewProjectInput');
+      const taskInput = document.getElementById('dictNewProjectTaskInput');
+      const code = codeInput.value.trim();
+      const name = nameInput.value.trim();
+      const taskName = taskInput.value.trim();
+      if (!code || !name || !taskName) {
+        alert('请填写完整的项目编号、项目名称和默认任务名称！');
+        return;
       }
-      input.value = '';
+      if (!Array.isArray(state.erpProjects)) state.erpProjects = [];
+      const existing = getErpProjectByName(name);
+      if (existing) {
+        existing.code = code;
+        existing.taskName = taskName;
+      } else {
+        state.erpProjects.unshift({ code, name, taskName, alias: '' });
+      }
+      if (!state.projectOptions.includes(name)) {
+        state.projectOptions.unshift(name);
+      }
+      if (!state.workContentOptions.includes(taskName)) {
+        state.workContentOptions.unshift(taskName);
+      }
+      saveState();
+      codeInput.value = '';
+      nameInput.value = '';
+      taskInput.value = '';
+      renderDictModalLists();
+    }
+
+    function updateDictProjectField(idx, field, newVal) {
+      const val = newVal.trim();
+      const projName = state.projectOptions[idx];
+      if (!projName) return;
+      if (!Array.isArray(state.erpProjects)) state.erpProjects = [];
+      let erp = getErpProjectByName(projName);
+      if (!erp) {
+        erp = { code: '', name: projName, taskName: '', alias: '' };
+        state.erpProjects.push(erp);
+      }
+      erp[field] = val;
+      if (field === 'code') {
+        state.tasks.forEach(t => {
+          if (t.project === projName) t.projectCode = val;
+        });
+      }
+      if (field === 'taskName' && val && !state.workContentOptions.includes(val)) {
+        state.workContentOptions.unshift(val);
+      }
+      saveState();
       renderDictModalLists();
     }
 
@@ -2986,6 +3307,8 @@
       if (!val) return;
       const oldVal = state.projectOptions[idx];
       state.projectOptions[idx] = val;
+      const erp = getErpProjectByName(oldVal);
+      if (erp) erp.name = val;
       state.tasks.forEach(t => {
         if (t.project === oldVal) t.project = val;
       });
@@ -3005,6 +3328,9 @@
         }
       }
       state.projectOptions.splice(idx, 1);
+      if (Array.isArray(state.erpProjects)) {
+        state.erpProjects = state.erpProjects.filter(p => p.name !== target);
+      }
       saveState();
       renderDictModalLists();
     }
@@ -3293,6 +3619,175 @@
       renderAll();
     }
 
+    // ================= DAILY ERP REPORT GENERATOR =================
+    let dailyReportRows = [];
+
+    function openDailyReportModal() {
+      const memberSel = document.getElementById('dailyReportMemberSelect');
+      const dateInput = document.getElementById('dailyReportDateInput');
+      const activeMembers = state.members.filter(m => m.active !== false);
+
+      memberSel.innerHTML = activeMembers.map(m =>
+        `<option value="${m.id}" ${m.id === state.currentActorId ? 'selected' : ''}>${escapeHtml(m.name)} (${m.isBoss ? '负责人' : '项目成员'})</option>`
+      ).join('');
+
+      if (!dateInput.value) {
+        dateInput.value = getTodayStr();
+      }
+
+      renderDailyReportPreview();
+      const modal = document.getElementById('dailyReportModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeDailyReportModal() {
+      const modal = document.getElementById('dailyReportModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function renderDailyReportPreview() {
+      const memberId = document.getElementById('dailyReportMemberSelect').value;
+      const dateStr = document.getElementById('dailyReportDateInput').value || getTodayStr();
+      const tbody = document.getElementById('dailyReportTableBody');
+      const summaryBadge = document.getElementById('dailyReportSummaryBadge');
+      const downloadBtn = document.getElementById('downloadDailyReportBtn');
+
+      const dayTasks = state.tasks.filter(t =>
+        isMemberInvolvedInTask(memberId, t) &&
+        t.startDate <= dateStr &&
+        t.endDate >= dateStr
+      );
+
+      dailyReportRows = dayTasks.map((t, idx) => {
+        const hours = getTaskHoursOnDate(t, dateStr);
+        const projectCode = t.projectCode || getProjectCode(t.project);
+        const content = (t.note && t.note.trim()) ? t.note.trim() : t.title;
+        return {
+          seq: idx + 1,
+          taskId: t.id,
+          projectCode,
+          projectName: t.project || '',
+          taskName: t.title || '',
+          date: dateStr,
+          hours,
+          content
+        };
+      });
+
+      const totalHours = Math.round(dailyReportRows.reduce((acc, r) => acc + (Number(r.hours) || 0), 0) * 10) / 10;
+      summaryBadge.textContent = `共 ${dailyReportRows.length} 项 · 合计 ${totalHours}h`;
+
+      if (dailyReportRows.length === 0) {
+        downloadBtn.disabled = true;
+        downloadBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8" class="py-10 text-center text-slate-400">
+              <i class="fa-regular fa-calendar-xmark text-xl mb-1.5 block"></i>
+              该成员在 ${escapeHtml(dateStr)} 暂无排期任务，无法生成日报
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      downloadBtn.disabled = false;
+      downloadBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+
+      tbody.innerHTML = dailyReportRows.map((row, idx) => `
+        <tr class="hover:bg-slate-50/80">
+          <td class="py-2 px-3 text-center font-semibold text-slate-700">${row.seq}</td>
+          <td class="py-2 px-3 font-mono text-indigo-700 font-semibold whitespace-nowrap" title="${escapeHtml(row.projectName)}">
+            ${escapeHtml(row.projectCode || '未填编号')}
+          </td>
+          <td class="py-2 px-3 text-slate-800 font-medium whitespace-nowrap">${escapeHtml(row.taskName)}</td>
+          <td class="py-2 px-3 text-slate-600 whitespace-nowrap">${escapeHtml(row.date)}</td>
+          <td class="py-2 px-3 text-center font-bold text-indigo-600 whitespace-nowrap">${row.hours}</td>
+          <td class="py-2 px-3">
+            <input type="text" value="${escapeHtml(row.content)}"
+              oninput="updateDailyReportRowContent(${idx}, this.value)"
+              class="w-full px-2.5 py-1 rounded-lg border border-slate-300 focus:border-indigo-500 outline-none text-xs text-slate-800 bg-white">
+          </td>
+          <td class="py-2 px-3 text-slate-300 text-center">-</td>
+          <td class="py-2 px-3 text-slate-300 text-center">-</td>
+        </tr>
+      `).join('');
+    }
+
+    function updateDailyReportRowContent(idx, val) {
+      if (dailyReportRows[idx]) {
+        dailyReportRows[idx].content = val;
+      }
+    }
+
+    function downloadDailyReportXlsx() {
+      if (!dailyReportRows || dailyReportRows.length === 0) return;
+      const memberId = document.getElementById('dailyReportMemberSelect').value;
+      const member = state.members.find(m => m.id === memberId);
+      const memberName = member ? member.name : '成员';
+      const dateStr = document.getElementById('dailyReportDateInput').value || getTodayStr();
+
+      const headers = [
+        '序号',
+        '项目编号##xmbh',
+        '任务名称##rwmc',
+        '报工日期##bgrq',
+        '报工时长（h）##bgsch',
+        '报工内容##bgnr',
+        '类型##lx',
+        '项目总工##xmzg'
+      ];
+
+      const aoa = [
+        headers,
+        ...dailyReportRows.map(r => [
+          r.seq,
+          r.projectCode,
+          r.taskName,
+          r.date,
+          r.hours,
+          r.content,
+          '',
+          ''
+        ])
+      ];
+
+      const filename = `日报_${memberName}_${dateStr}.xlsx`;
+
+      if (typeof XLSX !== 'undefined') {
+        const ws = XLSX.utils.aoa_to_sheet(aoa);
+        ws['!cols'] = [
+          { wch: 8 },
+          { wch: 18 },
+          { wch: 22 },
+          { wch: 14 },
+          { wch: 16 },
+          { wch: 48 },
+          { wch: 12 },
+          { wch: 14 }
+        ];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, '日报');
+        XLSX.writeFile(wb, filename);
+      } else {
+        const csvLines = aoa.map(row =>
+          row.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')
+        ).join('\r\n');
+        const blob = new Blob(['\uFEFF' + csvLines], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename.replace(/\.xlsx$/, '.csv');
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        alert('⚠️ 当前处于离线状态，Excel 组件未加载，已为您降级导出兼容的 CSV 文件。');
+      }
+    }
+
     // ================= DATA BACKUP, IMPORT & PROTECTED RESET =================
     function resetDemoData() {
       const code = prompt('⚠️ 防误操作保护：恢复初始演示数据将清空您当前录入的所有数据！\n如确认重置，请在下方输入「重置」两个字：');
@@ -3322,7 +3817,7 @@
         try {
           const imported = JSON.parse(e.target.result);
           if (imported && Array.isArray(imported.members) && Array.isArray(imported.tasks)) {
-            state = imported;
+            state = migrateStateToErp(imported);
             if (!Array.isArray(state.trash)) state.trash = [];
             renderAll();
             alert('✅ 备份数据导入恢复成功！');

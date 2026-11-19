@@ -1,4 +1,19 @@
 {
+  "erpSchemaVersion": 1,
+  "erpProjects": [
+    { "code": "XM20261117267", "name": "常熟市国家农业科技园古里镇示范基地更新设计技术服务合同", "taskName": "方案设计", "alias": "" },
+    { "code": "HX-2022-12-008", "name": "Y江下游水电开发对雅尼湿地生态影响及保护规划研究", "taskName": "成果文本编制及修改", "alias": "雅尼项目" },
+    { "code": "XM20260928250", "name": "腾讯深圳总部项目DY01-01街坊小微湿地专项设计服务", "taskName": "概念方案设计", "alias": "腾讯小微湿地项目" },
+    { "code": "XM20260928249", "name": "常熟（南湖湿地公园）司法生态修复基地多功能复合型小微湿地示范工程设计", "taskName": "项目设计", "alias": "" },
+    { "code": "XM20260713222", "name": "A景区一体化提升之尚湖景区重点区域生态景观系统提升工程", "taskName": "项目施工", "alias": "尚湖景观提升项目" },
+    { "code": "XM20251201156", "name": "包头市三北工程退化湿地修复设计项目", "taskName": "开展项目设计", "alias": "包头三北项目-赛罕塔拉片区" },
+    { "code": "XM20250813110", "name": "沙家浜湿地公园保护修复与管理项目实施方案", "taskName": "鸟类栖息地项目设计", "alias": "" },
+    { "code": "XM2025061392", "name": "湖北省武汉市江汉平原南部湖泊湿地生态保护修复项目勘察、设计", "taskName": "开展项目设计", "alias": "沉湖下红星垸鸟类栖息地修复项目" },
+    { "code": "XM2025030327", "name": "湖北石首麋鹿国家级自然保护区2025年中央财政湿地保护与恢复项目实施方案", "taskName": "项目后续服务", "alias": "" },
+    { "code": "2024-238", "name": "基于萤火虫复育需求的生境恢复主导型小微湿地关键技术研究", "taskName": "材料编制", "alias": "萤火虫科技项目" },
+    { "code": "2024-098", "name": "福建莆田木兰溪口湿地公园保护修复可行性研究报告", "taskName": "可研报告修改", "alias": "" },
+    { "code": "HX-2023-11-080", "name": "明溪县王桥生态观鸟景区旅游基础设施建设项目一期 生态景观工程设计及后期现场服务等技术协作项目", "taskName": "设计变更材料", "alias": "王桥项目" }
+  ],
   "currentActorId": "m1",
   "selectedPersonalMemberId": "all",
   "viewMode": "matrix",
@@ -120,22 +135,31 @@
     }
   ],
   "projectOptions": [
-    "王桥项目",
-    "沉湖下红星垸鸟类栖息地修复项目",
-    "萤火虫科技项目",
-    "尚湖景观提升项目",
-    "腾讯小微湿地项目",
-    "包头三北项目-赛罕塔拉片区",
-    "雅尼项目"
+    "常熟市国家农业科技园古里镇示范基地更新设计技术服务合同",
+    "Y江下游水电开发对雅尼湿地生态影响及保护规划研究",
+    "腾讯深圳总部项目DY01-01街坊小微湿地专项设计服务",
+    "常熟（南湖湿地公园）司法生态修复基地多功能复合型小微湿地示范工程设计",
+    "A景区一体化提升之尚湖景区重点区域生态景观系统提升工程",
+    "包头市三北工程退化湿地修复设计项目",
+    "沙家浜湿地公园保护修复与管理项目实施方案",
+    "湖北省武汉市江汉平原南部湖泊湿地生态保护修复项目勘察、设计",
+    "湖北石首麋鹿国家级自然保护区2025年中央财政湿地保护与恢复项目实施方案",
+    "基于萤火虫复育需求的生境恢复主导型小微湿地关键技术研究",
+    "福建莆田木兰溪口湿地公园保护修复可行性研究报告",
+    "明溪县王桥生态观鸟景区旅游基础设施建设项目一期 生态景观工程设计及后期现场服务等技术协作项目"
   ],
   "workContentOptions": [
-    "苗木种植",
+    "方案设计",
+    "成果文本编制及修改",
     "概念方案设计",
-    "材料整合上传",
-    "消落带，汇口图纸",
-    "项目变更材料",
-    "cad图纸绘制",
-    "文本编制"
+    "项目设计",
+    "项目施工",
+    "开展项目设计",
+    "鸟类栖息地项目设计",
+    "项目后续服务",
+    "材料编制",
+    "可研报告修改",
+    "设计变更材料"
   ],
   "members": [
     {
@@ -178,8 +202,9 @@
   "tasks": [
     {
       "id": "t_1794540405954",
-      "project": "雅尼项目",
-      "title": "文本编制",
+      "project": "Y江下游水电开发对雅尼湿地生态影响及保护规划研究",
+      "projectCode": "HX-2022-12-008",
+      "title": "成果文本编制及修改",
       "memberId": "m1",
       "collaborators": [
         "m3",
@@ -191,12 +216,13 @@
       "hoursPerDay": 8,
       "status": "doing",
       "priority": "normal",
-      "note": ""
+      "note": "文本编制"
     },
     {
       "id": "t_1794540632610",
-      "project": "雅尼项目",
-      "title": "消落带，汇口图纸",
+      "project": "Y江下游水电开发对雅尼湿地生态影响及保护规划研究",
+      "projectCode": "HX-2022-12-008",
+      "title": "成果文本编制及修改",
       "memberId": "m3",
       "collaborators": [],
       "source": "assigned",
@@ -205,12 +231,13 @@
       "hoursPerDay": 8,
       "status": "todo",
       "priority": "normal",
-      "note": ""
+      "note": "消落带，汇口图纸"
     },
     {
       "id": "t_1794540677108",
-      "project": "萤火虫科技项目",
-      "title": "材料整合上传",
+      "project": "基于萤火虫复育需求的生境恢复主导型小微湿地关键技术研究",
+      "projectCode": "2024-238",
+      "title": "材料编制",
       "memberId": "m1",
       "collaborators": [],
       "source": "self",
@@ -219,13 +246,18 @@
       "hoursPerDay": 2,
       "status": "done",
       "priority": "normal",
+<<<<<<< HEAD
       "note": "",
       "prevStatus": "doing"
+=======
+      "note": "材料整合上传"
+>>>>>>> 7cdc7ef (chore: 本地一键更新排期与看板 (2026/11/19 11:23:01))
     },
     {
       "id": "t_1794540688058",
-      "project": "包头三北项目-赛罕塔拉片区",
-      "title": "项目变更材料",
+      "project": "包头市三北工程退化湿地修复设计项目",
+      "projectCode": "XM20251201156",
+      "title": "开展项目设计",
       "memberId": "m1",
       "collaborators": [],
       "source": "self",
@@ -234,11 +266,12 @@
       "hoursPerDay": 2,
       "status": "todo",
       "priority": "normal",
-      "note": ""
+      "note": "项目变更材料"
     },
     {
       "id": "t_1794540777594",
-      "project": "腾讯小微湿地项目",
+      "project": "腾讯深圳总部项目DY01-01街坊小微湿地专项设计服务",
+      "projectCode": "XM20260928250",
       "title": "概念方案设计",
       "memberId": "m1",
       "collaborators": [],
@@ -252,7 +285,8 @@
     },
     {
       "id": "t_1794540797513",
-      "project": "腾讯小微湿地项目",
+      "project": "腾讯深圳总部项目DY01-01街坊小微湿地专项设计服务",
+      "projectCode": "XM20260928250",
       "title": "概念方案设计",
       "memberId": "m1",
       "collaborators": [],
@@ -266,8 +300,9 @@
     },
     {
       "id": "t_1794540845194",
-      "project": "尚湖景观提升项目",
-      "title": "苗木种植",
+      "project": "A景区一体化提升之尚湖景区重点区域生态景观系统提升工程",
+      "projectCode": "XM20260713222",
+      "title": "项目施工",
       "memberId": "m1",
       "collaborators": [],
       "source": "self",
@@ -276,12 +311,13 @@
       "hoursPerDay": 8,
       "status": "todo",
       "priority": "normal",
-      "note": ""
+      "note": "苗木种植"
     },
     {
       "id": "t_1794550723707",
-      "project": "沉湖下红星垸鸟类栖息地修复项目",
-      "title": "cad图纸绘制",
+      "project": "湖北省武汉市江汉平原南部湖泊湿地生态保护修复项目勘察、设计",
+      "projectCode": "XM2025061392",
+      "title": "开展项目设计",
       "memberId": "m2",
       "collaborators": [],
       "source": "assigned",
@@ -290,12 +326,13 @@
       "hoursPerDay": 2,
       "status": "doing",
       "priority": "normal",
-      "note": ""
+      "note": "cad图纸绘制"
     },
     {
       "id": "t_1794550792419",
-      "project": "王桥项目",
-      "title": "cad图纸绘制",
+      "project": "明溪县王桥生态观鸟景区旅游基础设施建设项目一期 生态景观工程设计及后期现场服务等技术协作项目",
+      "projectCode": "HX-2023-11-080",
+      "title": "设计变更材料",
       "memberId": "m2",
       "collaborators": [],
       "source": "assigned",
@@ -304,12 +341,13 @@
       "hoursPerDay": 8,
       "status": "todo",
       "priority": "normal",
-      "note": ""
+      "note": "cad图纸绘制"
     },
     {
       "id": "t_1794550800915",
-      "project": "王桥项目",
-      "title": "cad图纸绘制",
+      "project": "明溪县王桥生态观鸟景区旅游基础设施建设项目一期 生态景观工程设计及后期现场服务等技术协作项目",
+      "projectCode": "HX-2023-11-080",
+      "title": "设计变更材料",
       "memberId": "m2",
       "collaborators": [],
       "source": "assigned",
@@ -318,12 +356,13 @@
       "hoursPerDay": 8,
       "status": "todo",
       "priority": "normal",
-      "note": ""
+      "note": "cad图纸绘制"
     },
     {
       "id": "t_1794793219672",
-      "project": "雅尼项目",
-      "title": "文本编制",
+      "project": "Y江下游水电开发对雅尼湿地生态影响及保护规划研究",
+      "projectCode": "HX-2022-12-008",
+      "title": "成果文本编制及修改",
       "memberId": "m4",
       "collaborators": [],
       "source": "assigned",
@@ -332,6 +371,7 @@
       "hoursPerDay": 8,
       "status": "todo",
       "priority": "normal",
+<<<<<<< HEAD
       "note": ""
     },
     {
@@ -375,6 +415,9 @@
       "status": "todo",
       "priority": "normal",
       "note": ""
+=======
+      "note": "文本编制"
+>>>>>>> 7cdc7ef (chore: 本地一键更新排期与看板 (2026/11/19 11:23:01))
     }
   ]
 }

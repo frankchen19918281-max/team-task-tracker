@@ -279,17 +279,19 @@
       <!-- Right Controls: Date Range & Filters -->
       <div class="lg:col-span-5 bg-white p-3 rounded-xl border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-2">
         <div class="flex items-center gap-1.5">
-          <button onclick="shiftDateRange(-7)" class="no-export p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs cursor-pointer" title="前一周">
-            <i class="fa-solid fa-chevron-left"></i>
+          <button onclick="shiftDateRange(-7)" class="no-export px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs cursor-pointer flex items-center gap-1" title="往前翻一周（周一至周日）">
+            <i class="fa-solid fa-chevron-left text-[10px]"></i>
+            <span>上周</span>
           </button>
-          <button onclick="resetDateToToday()" class="no-export px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-xs font-medium text-slate-700 cursor-pointer">
-            今天
+          <button onclick="resetDateToToday()" class="no-export px-2.5 py-1 rounded-lg border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 text-xs font-semibold text-indigo-700 cursor-pointer" title="回到当周周一">
+            当周
           </button>
-          <button onclick="shiftDateRange(7)" class="no-export p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs cursor-pointer" title="后一周">
-            <i class="fa-solid fa-chevron-right"></i>
+          <button onclick="shiftDateRange(7)" class="no-export px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs cursor-pointer flex items-center gap-1" title="往后翻一周（周一至周日）">
+            <span>下周</span>
+            <i class="fa-solid fa-chevron-right text-[10px]"></i>
           </button>
-          <span class="text-xs text-slate-400">排期范围:</span>
-          <span id="dateRangeLabel" class="text-xs font-bold text-indigo-700 ml-0.5">11月13日 - 11月22日</span>
+          <span class="text-xs text-slate-400 ml-0.5">范围:</span>
+          <span id="dateRangeLabel" class="text-xs font-bold text-indigo-700">11/16 - 11/29</span>
         </div>
 
         <div class="flex items-center gap-2 no-export">
@@ -297,10 +299,9 @@
             <input type="checkbox" id="filterFreeOnly" onchange="renderAll()" class="rounded text-indigo-600 focus:ring-indigo-500">
             <span>仅看今日未满载</span>
           </label>
-          <select id="daysCountSelect" onchange="handleDaysCountChange(this.value)" class="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-slate-700 focus:outline-none">
-            <option value="7">显示 7 天</option>
-            <option value="10" selected>显示 10 天</option>
-            <option value="14">显示 14 天</option>
+          <select id="daysCountSelect" onchange="handleDaysCountChange(this.value)" class="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-slate-700 focus:outline-none cursor-pointer">
+            <option value="14" selected>当周+下周 (2周)</option>
+            <option value="7">仅看单周 (1周)</option>
           </select>
         </div>
       </div>
@@ -1034,6 +1035,15 @@
       return formatDate(new Date());
     }
 
+    function getMondayStr(dateStr) {
+      const base = dateStr || getTodayStr();
+      const [y, m, d] = base.split('-').map(Number);
+      const dt = new Date(y, m - 1, d);
+      const dow = dt.getDay(); // 0=Sun, 1=Mon ... 6=Sat
+      const diffToMonday = dow === 0 ? -6 : (1 - dow);
+      return addDays(base, diffToMonday);
+    }
+
     const DEFAULT_GH_OWNER = 'frankchen19918281-max';
     const DEFAULT_GH_REPO = 'team-task-tracker';
     const DEFAULT_GH_BRANCH = 'main';
@@ -1160,7 +1170,7 @@
         currentActorId: 'm1',
         selectedPersonalMemberId: 'all',
         viewMode: 'matrix',
-        startDate: '2026-11-15',
+        startDate: getMondayStr(getTodayStr()),
         daysToShow: 14,
         safeLock: false,
         trash: [
@@ -1624,10 +1634,14 @@
           // Preserve current user's local view preferences while syncing shared team data
           const localActor = state.currentActorId;
           const localView = state.viewMode;
+          const localStartDate = state.startDate || getMondayStr(getTodayStr());
+          const localDaysToShow = state.daysToShow === 7 ? 7 : 14;
           state = {
             ...remoteData,
             currentActorId: localActor || remoteData.currentActorId,
-            viewMode: localView || 'matrix'
+            viewMode: localView || 'matrix',
+            startDate: localStartDate,
+            daysToShow: localDaysToShow
           };
           localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
           renderSafeLockAndTrashButton();
@@ -1828,6 +1842,9 @@
             if (!Array.isArray(parsed.workContentOptions)) parsed.workContentOptions = getInitialDemoData().workContentOptions;
             if (!Array.isArray(parsed.trash)) parsed.trash = [];
             if (typeof parsed.safeLock !== 'boolean') parsed.safeLock = false;
+            // Always align calendar view to current week's Monday (当周+下周, 14 days) on fresh page load
+            parsed.startDate = getMondayStr(getTodayStr());
+            parsed.daysToShow = parsed.daysToShow === 7 ? 7 : 14;
             return migrateStateToErp(parsed);
           }
         }
@@ -2223,12 +2240,19 @@
 
     function getMatrixDateList() {
       const list = [];
-      const count = Number(state.daysToShow) || 10;
+      const count = state.daysToShow === 7 ? 7 : 14;
+      const baseMonday = getMondayStr(state.startDate || getTodayStr());
+      state.startDate = baseMonday;
+      state.daysToShow = count;
+      const daysSel = document.getElementById('daysCountSelect');
+      if (daysSel && daysSel.value !== String(count)) {
+        daysSel.value = String(count);
+      }
       const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
       const today = getTodayStr();
 
       for (let i = 0; i < count; i++) {
-        const dStr = addDays(state.startDate, i);
+        const dStr = addDays(baseMonday, i);
         const [y, m, d] = dStr.split('-').map(Number);
         const dt = new Date(y, m - 1, d);
         const wDay = weekDays[dt.getDay()];
@@ -2718,17 +2742,19 @@
     }
 
     function shiftDateRange(days) {
-      state.startDate = addDays(state.startDate, days);
+      const step = days < 0 ? -7 : 7;
+      state.startDate = addDays(getMondayStr(state.startDate || getTodayStr()), step);
       renderAll();
     }
 
     function resetDateToToday() {
-      state.startDate = addDays(getTodayStr(), -1);
+      state.startDate = getMondayStr(getTodayStr());
       renderAll();
     }
 
     function handleDaysCountChange(val) {
-      state.daysToShow = Number(val) || 10;
+      state.daysToShow = Number(val) === 7 ? 7 : 14;
+      state.startDate = getMondayStr(state.startDate || getTodayStr());
       renderAll();
     }
 

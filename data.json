@@ -4,7 +4,7 @@
   "viewMode": "matrix",
   "startDate": "2026-11-19",
   "daysToShow": 14,
-  "safeLock": true,
+  "safeLock": false,
   "trash": [
     {
       "trashType": "task",

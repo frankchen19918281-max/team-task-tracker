@@ -2080,56 +2080,295 @@
       }
     }
 
-    // ================= EXPORT AS HIGH-RES IMAGE FOR BOSS =================
+    // ================= EXPORT AS HIGH-RES 2-WEEK POSTER FOR BOSS (OFF-SCREEN RENDER) =================
+    function buildWeekDatesFromMonday(mondayStr) {
+      const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+      const today = getTodayStr();
+      const list = [];
+      for (let i = 0; i < 7; i++) {
+        const dStr = addDays(mondayStr, i);
+        const [y, m, d] = dStr.split('-').map(Number);
+        const dt = new Date(y, m - 1, d);
+        list.push({
+          dateStr: dStr,
+          monthDay: `${m}/${d}`,
+          weekDay: `周${weekDays[dt.getDay()]}`,
+          isWeekend: dt.getDay() === 0 || dt.getDay() === 6,
+          isToday: dStr === today
+        });
+      }
+      return list;
+    }
+
+    function renderPosterWeekSection(sectionTitle, badgeText, badgeClass, weekDates, activeMembers) {
+      const avatarHexMap = {
+        indigo: '#4f46e5',
+        emerald: '#059669',
+        blue: '#2563eb',
+        amber: '#f59e0b',
+        purple: '#9333ea',
+        rose: '#e11d48',
+        cyan: '#0891b2',
+        slate: '#334155'
+      };
+
+      const headerCols = weekDates.map(d => {
+        const thBg = d.isToday ? '#eef2ff' : (d.isWeekend ? '#f1f5f9' : '#f8fafc');
+        const thColor = d.isToday ? '#4338ca' : (d.isWeekend ? '#64748b' : '#334155');
+        const borderBottom = d.isToday ? '2px solid #4f46e5' : '1px solid #e2e8f0';
+        return `
+          <th style="padding:10px 8px; border-right:1px solid #e2e8f0; border-bottom:${borderBottom}; background:${thBg}; color:${thColor}; text-align:center;">
+            <div style="font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:5px;">
+              <span>${d.monthDay}</span>
+              <span style="font-size:11px; font-weight:${d.isToday ? '700' : '500'}; padding:1px 6px; border-radius:999px; background:${d.isToday ? '#4f46e5' : 'transparent'}; color:${d.isToday ? '#ffffff' : '#64748b'};">
+                ${d.isToday ? '今天·' + d.weekDay : d.weekDay}
+              </span>
+            </div>
+          </th>
+        `;
+      }).join('');
+
+      const rowsHtml = activeMembers.map(member => {
+        const avatarBg = avatarHexMap[member.color] || '#4f46e5';
+        const weekTotalHours = Math.round(
+          weekDates.reduce((sum, d) => sum + getMemberDayStats(member.id, d.dateStr).totalHours, 0) * 10
+        ) / 10;
+
+        const dayCells = weekDates.map(d => {
+          const dayStats = getMemberDayStats(member.id, d.dateStr);
+          const ratioPct = Math.min(100, Math.round((dayStats.totalHours / member.capacity) * 100));
+          let barHex = '#cbd5e1';
+          let cellBg = d.isWeekend && dayStats.totalHours === 0 ? '#f8fafc' : '#ffffff';
+          if (dayStats.totalHours > 0) {
+            if (dayStats.totalHours < member.capacity * 0.75) {
+              barHex = '#10b981';
+              cellBg = '#f0fdf4';
+            } else if (dayStats.totalHours <= member.capacity) {
+              barHex = '#f59e0b';
+              cellBg = '#fffbeb';
+            } else {
+              barHex = '#f43f5e';
+              cellBg = '#fff1f2';
+            }
+          }
+
+          const cardsHtml = dayStats.tasks.map(task => {
+            const isDone = isTaskDoneOnDate(task, d.dateStr);
+            const isBlocked = !isDone && task.status === 'blocked';
+            const isCollaborator = task.memberId !== member.id;
+            const dayHours = getTaskHoursOnDate(task, d.dateStr);
+            const erpProj = getErpProjectByName(task.project);
+            const projDisplay = task.project
+              ? ((erpProj && erpProj.alias && erpProj.alias !== task.project)
+                  ? `${task.project}（${erpProj.alias}）`
+                  : task.project)
+              : '';
+            const workContent = (task.note && task.note.trim()) ? task.note.trim() : task.title;
+            const subTaskTag = (task.note && task.note.trim() && task.title && task.note.trim() !== task.title)
+              ? task.title
+              : '';
+
+            const ownerObj = state.members.find(m => m.id === task.memberId);
+            const ownerName = ownerObj ? ownerObj.name : '';
+            const collabNames = (task.collaborators || [])
+              .map(cid => state.members.find(m => m.id === cid)?.name)
+              .filter(Boolean);
+
+            const cardBorder = isDone ? '#a7f3d0' : (isBlocked ? '#fda4af' : '#cbd5e1');
+            const cardBg = isDone ? '#ecfdf5' : (isBlocked ? '#fff1f2' : '#ffffff');
+            const statusText = isDone
+              ? '<span style="color:#059669; font-weight:700;">✓ 已完成</span>'
+              : (isBlocked
+                  ? '<span style="color:#e11d48; font-weight:700;">⚠ 卡点</span>'
+                  : '<span style="color:#64748b;">进行中</span>');
+
+            const roleText = isCollaborator
+              ? `协作（主责:${escapeHtml(ownerName)}）`
+              : (collabNames.length > 0 ? `主责 · 协同:${escapeHtml(collabNames.join('、'))}` : '主责');
+
+            return `
+              <div style="background:${cardBg}; border:1px solid ${cardBorder}; border-radius:8px; padding:7px 8px; margin-bottom:6px; box-sizing:border-box;">
+                ${projDisplay ? `
+                  <div style="font-size:11px; font-weight:700; color:${isDone ? '#047857' : '#4338ca'}; background:${isDone ? '#d1fae5' : '#eef2ff'}; border:1px solid ${isDone ? '#a7f3d0' : '#c7d2fe'}; border-radius:5px; padding:3px 6px; margin-bottom:5px; line-height:1.35; white-space:normal; word-break:break-word;">
+                    📁 ${escapeHtml(projDisplay)}
+                  </div>
+                ` : ''}
+                <div style="font-size:12px; font-weight:600; color:${isDone ? '#475569' : '#0f172a'}; line-height:1.4; white-space:normal; word-break:break-word;">
+                  ${escapeHtml(workContent)}
+                </div>
+                ${subTaskTag ? `
+                  <div style="font-size:10px; color:#64748b; margin-top:3px; line-height:1.3; white-space:normal; word-break:break-word;">
+                    阶段任务：${escapeHtml(subTaskTag)}
+                  </div>
+                ` : ''}
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:4px; margin-top:6px; padding-top:5px; border-top:1px dashed #e2e8f0; font-size:10px;">
+                  <span style="color:#64748b; white-space:normal; word-break:break-word;">${roleText}</span>
+                  <div style="display:flex; align-items:center; gap:5px; flex-shrink:0;">
+                    ${statusText}
+                    <span style="font-weight:800; font-size:11px; color:${isDone ? '#047857' : '#4f46e5'}; background:${isDone ? '#d1fae5' : '#e0e7ff'}; padding:1px 6px; border-radius:4px;">${dayHours}h</span>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('');
+
+          return `
+            <td style="padding:8px; border-right:1px solid #e2e8f0; border-bottom:1px solid #e2e8f0; vertical-align:top; background:${cellBg};">
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; margin-bottom:7px;">
+                <div style="flex:1; height:6px; background:#e2e8f0; border-radius:999px; overflow:hidden;">
+                  <div style="width:${ratioPct}%; height:100%; background:${barHex}; border-radius:999px;"></div>
+                </div>
+                <span style="font-size:10px; font-weight:${dayStats.totalHours > member.capacity ? '800' : '600'}; color:${dayStats.totalHours > member.capacity ? '#e11d48' : (dayStats.totalHours > 0 ? '#475569' : '#94a3b8')}; flex-shrink:0;">
+                  ${dayStats.totalHours}h/${member.capacity}h
+                </span>
+              </div>
+              <div>
+                ${cardsHtml || '<div style="font-size:11px; color:#cbd5e1; text-align:center; padding:12px 0;">—</div>'}
+              </div>
+            </td>
+          `;
+        }).join('');
+
+        return `
+          <tr>
+            <td style="padding:12px; border-right:1px solid #e2e8f0; border-bottom:1px solid #e2e8f0; vertical-align:top; background:#ffffff;">
+              <div style="display:flex; align-items:flex-start; gap:8px;">
+                <div style="width:30px; height:30px; border-radius:9px; background:${avatarBg}; color:#ffffff; font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  ${escapeHtml(member.name.slice(0, 1))}
+                </div>
+                <div style="min-width:0; flex:1;">
+                  <div style="font-weight:700; font-size:14px; color:#0f172a; display:flex; align-items:center; gap:5px; flex-wrap:wrap;">
+                    <span>${escapeHtml(member.name)}</span>
+                    <span style="font-size:10px; padding:1px 5px; border-radius:4px; background:${member.isBoss ? '#eef2ff' : '#f1f5f9'}; color:${member.isBoss ? '#4f46e5' : '#475569'}; font-weight:600;">
+                      ${member.isBoss ? '负责人' : '成员'}
+                    </span>
+                  </div>
+                  <div style="font-size:11px; color:#64748b; margin-top:2px; word-break:break-word;">
+                    ${escapeHtml(member.role || '项目组')}
+                  </div>
+                  <div style="margin-top:7px; display:inline-block; font-size:11px; font-weight:700; color:#334155; background:#f1f5f9; border:1px solid #e2e8f0; border-radius:999px; padding:2px 8px;">
+                    周合计: ${weekTotalHours}h
+                  </div>
+                </div>
+              </div>
+            </td>
+            ${dayCells}
+          </tr>
+        `;
+      }).join('');
+
+      return `
+        <div style="background:#ffffff; border:1px solid #cbd5e1; border-radius:16px; overflow:hidden; box-shadow:0 1px 3px rgba(15,23,42,0.05);">
+          <div style="padding:12px 18px; background:#f8fafc; border-bottom:1px solid #e2e8f0; display:flex; align-items:center; justify-content:space-between;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="font-size:12px; font-weight:700; padding:3px 10px; border-radius:999px; ${badgeClass}">${badgeText}</span>
+              <span style="font-size:15px; font-weight:800; color:#0f172a;">${sectionTitle}</span>
+            </div>
+            <span style="font-size:12px; color:#64748b;">涵盖在岗成员 ${activeMembers.length} 人 · 项目名称与工作内容全量展开</span>
+          </div>
+          <table style="width:100%; table-layout:fixed; border-collapse:collapse;">
+            <colgroup>
+              <col style="width:162px;">
+              <col><col><col><col><col><col><col>
+            </colgroup>
+            <thead>
+              <tr>
+                <th style="padding:10px 12px; border-right:1px solid #e2e8f0; border-bottom:1px solid #e2e8f0; background:#f8fafc; text-align:left; font-size:12px; font-weight:700; color:#334155;">
+                  负责人 / 成员
+                </th>
+                ${headerCols}
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
     async function exportScheduleAsImage() {
       const btn = document.getElementById('exportImgBtn');
       const originalHtml = btn.innerHTML;
       btn.disabled = true;
-      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>正在生成高清图...</span>`;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>正在生成双周海报...</span>`;
 
-      const captureEl = document.getElementById('captureReportArea');
-      const rangeText = document.getElementById('dateRangeLabel').textContent;
+      const activeMembers = state.members.filter(m => m.active !== false);
+      const week1Monday = getMondayStr(state.startDate || getTodayStr());
+      const week2Monday = addDays(week1Monday, 7);
+      const week1Dates = buildWeekDatesFromMonday(week1Monday);
+      const week2Dates = buildWeekDatesFromMonday(week2Monday);
       const nowStr = new Date().toLocaleString('zh-CN', { hour12: false });
-      document.getElementById('exportReportSubTitle').textContent =
-        `排期周期：${rangeText}  |  在岗人数：${state.members.filter(m => m.active !== false).length}人  |  生成时间：${nowStr}`;
 
-      // Temporarily add snapshot styling so wide tables expand fully without horizontal scroll clipping
-      captureEl.classList.add('exporting-snapshot');
+      const posterEl = document.createElement('div');
+      posterEl.style.cssText = 'position:absolute; left:-12000px; top:0; width:1680px; background:#f1f5f9; padding:28px; box-sizing:border-box; font-family:"PingFang SC","Microsoft YaHei",sans-serif; color:#0f172a;';
+      posterEl.innerHTML = `
+        <div style="background:linear-gradient(135deg, #4338ca 0%, #4f46e5 60%, #6366f1 100%); color:#ffffff; padding:22px 28px; border-radius:18px; display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+          <div>
+            <div style="font-size:22px; font-weight:800; letter-spacing:0.3px;">📊 团队双周工作排期与任务负荷汇报表</div>
+            <div style="font-size:13px; color:#e0e7ff; margin-top:6px;">
+              统计周期：${week1Dates[0].dateStr}（周一）至 ${week2Dates[6].dateStr}（周日）  |  在岗成员：${activeMembers.length}人  |  生成时间：${nowStr}
+            </div>
+          </div>
+          <div style="text-align:right; font-size:12px; color:#e0e7ff; line-height:1.7;">
+            <div style="font-weight:700; color:#ffffff; font-size:13px;">每日工时负荷图例</div>
+            <div>🟢 轻松 (&lt;6h/天)  ·  🟡 饱和 (6~8h/天)  ·  🔴 超载 (&gt;8h/天)</div>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:22px;">
+          ${renderPosterWeekSection(
+            `当周工作排期（${week1Dates[0].monthDay} 周一 ~ ${week1Dates[6].monthDay} 周日）`,
+            '第一周 · 当周',
+            'background:#e0e7ff; color:#3730a3;',
+            week1Dates,
+            activeMembers
+          )}
+          ${renderPosterWeekSection(
+            `下周工作排期（${week2Dates[0].monthDay} 周一 ~ ${week2Dates[6].monthDay} 周日）`,
+            '第二周 · 下周',
+            'background:#d1fae5; color:#065f46;',
+            week2Dates,
+            activeMembers
+          )}
+        </div>
+      `;
 
-      const tableEl = document.getElementById('matrixTableElement');
-      const fullWidth = Math.max(captureEl.scrollWidth, tableEl ? tableEl.scrollWidth + 60 : 1200);
+      const prevBodyOverflow = document.body.style.overflowX;
+      document.body.style.overflowX = 'visible';
+      document.body.appendChild(posterEl);
 
       try {
-        await new Promise(r => setTimeout(r, 120));
-        const canvas = await html2canvas(captureEl, {
-          scale: 2, // 2x Retina clarity for WeChat / DingTalk viewing
+        await new Promise(r => setTimeout(r, 100));
+        const canvas = await html2canvas(posterEl, {
+          scale: 2,
           useCORS: true,
-          backgroundColor: '#f8fafc',
-          width: fullWidth,
-          windowWidth: fullWidth + 80
+          backgroundColor: '#f1f5f9',
+          width: posterEl.offsetWidth,
+          height: posterEl.offsetHeight,
+          windowWidth: 1800,
+          windowHeight: posterEl.offsetHeight + 100
         });
 
         const dataUrl = canvas.toDataURL('image/png');
         const imgEl = document.getElementById('generatedScheduleImg');
         const dlLink = document.getElementById('downloadScheduleImgLink');
-        const filename = `团队工作排期汇报_${getTodayStr()}.png`;
+        const filename = `团队双周工作排期汇报_${week1Dates[0].dateStr}_至_${week2Dates[6].dateStr}.png`;
 
         imgEl.src = dataUrl;
         dlLink.href = dataUrl;
         dlLink.download = filename;
 
-        // Also trigger direct download automatically for convenience
         dlLink.click();
 
-        // Open preview modal so user can also right-click copy directly to WeChat
         const previewModal = document.getElementById('imagePreviewModal');
         previewModal.classList.remove('hidden');
         previewModal.classList.add('flex');
       } catch (err) {
         console.error('Export image failed:', err);
-        alert('生成图片失败，请检查网络连接或使用浏览器自带截图功能。');
+        alert('生成图片失败，请检查网络连接或稍后重试。');
       } finally {
-        captureEl.classList.remove('exporting-snapshot');
+        posterEl.remove();
+        document.body.style.overflowX = prevBodyOverflow;
         btn.disabled = false;
         btn.innerHTML = originalHtml;
       }

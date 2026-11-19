@@ -518,6 +518,21 @@
       "status": "todo",
       "priority": "normal",
       "note": "消落带，汇口图纸"
+    },
+    {
+      "id": "t_1795080617165",
+      "project": "明溪县王桥生态观鸟景区旅游基础设施建设项目一期 生态景观工程设计及后期现场服务等技术协作项目",
+      "projectCode": "HX-2023-11-080",
+      "title": "设计变更材料",
+      "memberId": "m2",
+      "collaborators": [],
+      "source": "assigned",
+      "startDate": "2026-11-20",
+      "endDate": "2026-11-20",
+      "hoursPerDay": 6,
+      "status": "todo",
+      "priority": "normal",
+      "note": "cad图纸绘制"
     }
   ],
   "erpProjects": [

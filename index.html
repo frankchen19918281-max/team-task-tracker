@@ -464,11 +464,17 @@
         </div>
 
         <!-- 3. 报工内容 (具体工作内容，排期展示 & 生成日报用) -->
-        <div class="bg-amber-50/50 p-3.5 rounded-xl border border-amber-200/80 space-y-1.5">
-          <label class="block text-xs font-bold text-slate-800">
-            3. 报工内容 <span class="text-[11px] font-normal text-amber-700">（填写具体工作，将显示在排期格子里并直接用于生成 ERP 日报）</span>
-          </label>
-          <textarea id="taskNoteInput" rows="2" placeholder="填写具体工作内容（如：整理并完善项目方案及技术文本、消落带图纸绘制）..."
+        <div class="bg-amber-50/50 p-3.5 rounded-xl border border-amber-200/80 space-y-2">
+          <div class="flex items-center justify-between gap-2">
+            <label class="block text-xs font-bold text-slate-800">
+              3. 报工内容 <span class="text-[11px] font-normal text-amber-700">（显示在排期格子里并用于生成日报）</span>
+            </label>
+            <button type="button" onclick="saveCurrentNoteAsTemplate()" class="text-[11px] text-amber-700 hover:text-amber-900 font-semibold flex items-center gap-1 cursor-pointer shrink-0">
+              <i class="fa-solid fa-bookmark"></i> 存为常用模板
+            </button>
+          </div>
+          <div id="reportContentTemplatePills" class="flex flex-wrap gap-1.5"></div>
+          <textarea id="taskNoteInput" rows="2" placeholder="点击上方常用模板快速填入，或直接输入今日具体工作内容..."
             class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:border-indigo-500 outline-none text-xs bg-white"></textarea>
         </div>
 
@@ -680,15 +686,15 @@
           </div>
         </div>
 
-        <!-- Right Column: ERP Task Names -->
+        <!-- Right Column: Report Content Templates -->
         <div class="lg:col-span-4 bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col gap-3">
           <div class="font-bold text-xs text-slate-800 flex items-center justify-between">
-            <span><i class="fa-solid fa-list-check text-emerald-600 mr-1.5"></i>2. ERP 任务名称库</span>
+            <span><i class="fa-solid fa-list-check text-emerald-600 mr-1.5"></i>2. 常用报工内容模板</span>
             <span id="workContentOptionCount" class="text-[11px] text-slate-400 font-normal"></span>
           </div>
 
           <form onsubmit="addDictWorkContent(event)" class="flex gap-2">
-            <input type="text" id="dictNewWorkContentInput" required placeholder="输入ERP任务名称..."
+            <input type="text" id="dictNewWorkContentInput" required placeholder="输入常用报工内容模板..."
               class="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none focus:border-indigo-500">
             <button type="submit" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shrink-0 cursor-pointer">
               + 录入
@@ -1029,6 +1035,16 @@
 
     const DEFAULT_ERP_TASK_NAMES = Array.from(new Set(DEFAULT_ERP_PROJECTS.map(p => p.taskName)));
 
+    const DEFAULT_REPORT_CONTENT_OPTIONS = [
+      '苗木种植',
+      '概念方案设计',
+      '材料整合上传',
+      '消落带，汇口图纸',
+      '项目变更材料',
+      'cad图纸绘制',
+      '文本编制'
+    ];
+
     const LEGACY_WORK_CONTENTS = new Set([
       '苗木种植', '材料整合上传', '消落带，汇口图纸', '项目变更材料', 'cad图纸绘制', '文本编制'
     ]);
@@ -1046,6 +1062,9 @@
 
     function migrateStateToErp(data) {
       if (!data || typeof data !== 'object') return data;
+      if (!Array.isArray(data.reportContentOptions) || data.reportContentOptions.length === 0) {
+        data.reportContentOptions = [...DEFAULT_REPORT_CONTENT_OPTIONS];
+      }
       if (data.erpSchemaVersion === 1 && Array.isArray(data.erpProjects)) {
         return data;
       }
@@ -2765,6 +2784,49 @@
       ).join('');
     }
 
+    function renderReportContentTemplatePills() {
+      const container = document.getElementById('reportContentTemplatePills');
+      if (!container) return;
+      if (!Array.isArray(state.reportContentOptions) || state.reportContentOptions.length === 0) {
+        state.reportContentOptions = [...DEFAULT_REPORT_CONTENT_OPTIONS];
+      }
+      container.innerHTML = state.reportContentOptions.map(tpl => `
+        <button type="button" onclick="applyReportContentTemplate('${escapeHtml(tpl).replace(/'/g, "\\'")}')"
+          class="px-2 py-0.5 rounded-full text-[11px] bg-white hover:bg-amber-100 text-slate-700 hover:text-amber-900 border border-amber-200/90 transition cursor-pointer">
+          + ${escapeHtml(tpl)}
+        </button>
+      `).join('');
+    }
+
+    function applyReportContentTemplate(tpl) {
+      const textarea = document.getElementById('taskNoteInput');
+      if (!textarea) return;
+      const cur = textarea.value.trim();
+      if (!cur) {
+        textarea.value = tpl;
+      } else if (!cur.includes(tpl)) {
+        textarea.value = `${cur}；${tpl}`;
+      }
+      textarea.focus();
+    }
+
+    function saveCurrentNoteAsTemplate() {
+      const textarea = document.getElementById('taskNoteInput');
+      const val = textarea ? textarea.value.trim() : '';
+      if (!val) {
+        alert('请先在下方输入报工内容，再点击「存为常用模板」。');
+        return;
+      }
+      if (!Array.isArray(state.reportContentOptions)) {
+        state.reportContentOptions = [...DEFAULT_REPORT_CONTENT_OPTIONS];
+      }
+      if (!state.reportContentOptions.includes(val)) {
+        state.reportContentOptions.unshift(val);
+        saveState();
+        renderReportContentTemplatePills();
+      }
+    }
+
     function toggleQuickAddProject() {
       const box = document.getElementById('quickAddProjectBox');
       box.classList.toggle('hidden');
@@ -2934,6 +2996,7 @@
       }
 
       renderCollaboratorCheckboxes();
+      renderReportContentTemplatePills();
       updateWorkloadPreview();
       modal.classList.remove('hidden');
       modal.classList.add('flex');
@@ -3216,8 +3279,11 @@
 
     function renderDictModalLists() {
       if (!Array.isArray(state.erpProjects)) state.erpProjects = DEFAULT_ERP_PROJECTS.map(p => ({ ...p }));
+      if (!Array.isArray(state.reportContentOptions)) {
+        state.reportContentOptions = [...DEFAULT_REPORT_CONTENT_OPTIONS];
+      }
       document.getElementById('projectOptionCount').textContent = `共 ${state.projectOptions.length} 个`;
-      document.getElementById('workContentOptionCount').textContent = `共 ${state.workContentOptions.length} 项`;
+      document.getElementById('workContentOptionCount').textContent = `共 ${state.reportContentOptions.length} 项`;
 
       const projContainer = document.getElementById('dictProjectList');
       projContainer.innerHTML = state.projectOptions.map((p, idx) => {
@@ -3245,15 +3311,15 @@
       }).join('');
 
       const workContainer = document.getElementById('dictWorkContentList');
-      workContainer.innerHTML = state.workContentOptions.map((w, idx) => {
-        const usedCount = state.tasks.filter(t => t.title === w).length;
+      workContainer.innerHTML = state.reportContentOptions.map((w, idx) => {
+        const usedCount = state.tasks.filter(t => (t.note || '').includes(w)).length;
         return `
           <div class="flex items-center justify-between gap-2 bg-white px-3 py-1.5 rounded-lg border border-slate-200">
             <input type="text" value="${escapeHtml(w)}"
               onchange="updateDictWorkContent(${idx}, this.value)"
               class="flex-1 text-xs text-slate-800 font-medium focus:outline-none focus:text-indigo-600">
             ${usedCount > 0 ? `<span class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-600 shrink-0">${usedCount}个任务在用</span>` : ''}
-            <button onclick="removeDictWorkContent(${idx})" class="text-slate-400 hover:text-rose-600 p-1 cursor-pointer" title="删除该任务名称">
+            <button onclick="removeDictWorkContent(${idx})" class="text-slate-400 hover:text-rose-600 p-1 cursor-pointer" title="删除该报工内容模板">
               <i class="fa-regular fa-trash-can text-xs"></i>
             </button>
           </div>
@@ -3355,8 +3421,11 @@
       const input = document.getElementById('dictNewWorkContentInput');
       const val = input.value.trim();
       if (!val) return;
-      if (!state.workContentOptions.includes(val)) {
-        state.workContentOptions.unshift(val);
+      if (!Array.isArray(state.reportContentOptions)) {
+        state.reportContentOptions = [...DEFAULT_REPORT_CONTENT_OPTIONS];
+      }
+      if (!state.reportContentOptions.includes(val)) {
+        state.reportContentOptions.unshift(val);
         saveState();
       }
       input.value = '';
@@ -3366,11 +3435,7 @@
     function updateDictWorkContent(idx, newVal) {
       const val = newVal.trim();
       if (!val) return;
-      const oldVal = state.workContentOptions[idx];
-      state.workContentOptions[idx] = val;
-      state.tasks.forEach(t => {
-        if (t.title === oldVal) t.title = val;
-      });
+      state.reportContentOptions[idx] = val;
       saveState();
     }
 
@@ -3379,14 +3444,7 @@
         alert('当前已开启右上角【已锁删除】防误删锁！');
         return;
       }
-      const target = state.workContentOptions[idx];
-      const usedCount = state.tasks.filter(t => t.title === target).length;
-      if (usedCount > 0) {
-        if (!confirm(`⚠️ 防误删提醒：工作内容「${target}」当前正被 ${usedCount} 个任务使用！\n确定仍要从下拉库中移除吗？`)) {
-          return;
-        }
-      }
-      state.workContentOptions.splice(idx, 1);
+      state.reportContentOptions.splice(idx, 1);
       saveState();
       renderDictModalLists();
     }

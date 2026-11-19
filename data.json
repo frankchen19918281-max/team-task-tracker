@@ -473,6 +473,21 @@
       "status": "todo",
       "priority": "normal",
       "note": "文本编制"
+    },
+    {
+      "id": "t_1795080537693",
+      "project": "Y江下游水电开发对雅尼湿地生态影响及保护规划研究",
+      "projectCode": "HX-2022-12-008",
+      "title": "成果文本编制及修改",
+      "memberId": "m2",
+      "collaborators": [],
+      "source": "assigned",
+      "startDate": "2026-11-18",
+      "endDate": "2026-11-18",
+      "hoursPerDay": 2,
+      "status": "todo",
+      "priority": "normal",
+      "note": "消落带，汇口图纸"
     }
   ],
   "erpProjects": [

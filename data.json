@@ -443,6 +443,21 @@
       "status": "done",
       "priority": "normal",
       "note": "文本编制"
+    },
+    {
+      "id": "t_1795080383387",
+      "project": "包头市三北工程退化湿地修复设计项目",
+      "projectCode": "XM20251201156",
+      "title": "开展项目设计",
+      "memberId": "m4",
+      "collaborators": [],
+      "source": "assigned",
+      "startDate": "2026-11-20",
+      "endDate": "2026-11-20",
+      "hoursPerDay": 4,
+      "status": "todo",
+      "priority": "high",
+      "note": "项目变更材料"
     }
   ],
   "erpProjects": [

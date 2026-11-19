@@ -484,7 +484,7 @@
       "source": "assigned",
       "startDate": "2026-11-18",
       "endDate": "2026-11-18",
-      "hoursPerDay": 2.5,
+      "hoursPerDay": 8,
       "status": "todo",
       "priority": "normal",
       "note": "消落带，汇口图纸"

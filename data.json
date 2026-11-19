@@ -416,5 +416,14 @@
       "alias": "王桥项目"
     }
   ],
-  "erpSchemaVersion": 1
+  "erpSchemaVersion": 1,
+  "reportContentOptions": [
+    "苗木种植",
+    "概念方案设计",
+    "材料整合上传",
+    "消落带，汇口图纸",
+    "项目变更材料",
+    "cad图纸绘制",
+    "文本编制"
+  ]
 }

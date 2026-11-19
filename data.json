@@ -8,6 +8,25 @@
   "trash": [
     {
       "trashType": "task",
+      "deletedAt": "2026/11/19 13:13:52",
+      "data": {
+        "id": "t_1795065183871",
+        "project": "常熟市国家农业科技园古里镇示范基地更新设计技术服务合同",
+        "projectCode": "XM20261117267",
+        "title": "方案设计",
+        "memberId": "m2",
+        "collaborators": [],
+        "source": "assigned",
+        "startDate": "2026-11-23",
+        "endDate": "2026-11-27",
+        "hoursPerDay": 8,
+        "status": "todo",
+        "priority": "normal",
+        "note": ""
+      }
+    },
+    {
+      "trashType": "task",
       "deletedAt": "2026/11/19 13:08:03",
       "data": {
         "id": "t_1795064876302",
@@ -390,21 +409,6 @@
       "status": "todo",
       "priority": "normal",
       "note": "cad图纸绘制；文本编制"
-    },
-    {
-      "id": "t_1795065183871",
-      "project": "常熟市国家农业科技园古里镇示范基地更新设计技术服务合同",
-      "projectCode": "XM20261117267",
-      "title": "方案设计",
-      "memberId": "m2",
-      "collaborators": [],
-      "source": "assigned",
-      "startDate": "2026-11-23",
-      "endDate": "2026-11-27",
-      "hoursPerDay": 8,
-      "status": "todo",
-      "priority": "normal",
-      "note": ""
     }
   ],
   "erpProjects": [

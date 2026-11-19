@@ -463,6 +463,15 @@
           </div>
         </div>
 
+        <!-- 3. 报工内容 (具体工作内容，排期展示 & 生成日报用) -->
+        <div class="bg-amber-50/50 p-3.5 rounded-xl border border-amber-200/80 space-y-1.5">
+          <label class="block text-xs font-bold text-slate-800">
+            3. 报工内容 <span class="text-[11px] font-normal text-amber-700">（填写具体工作，将显示在排期格子里并直接用于生成 ERP 日报）</span>
+          </label>
+          <textarea id="taskNoteInput" rows="2" placeholder="填写具体工作内容（如：整理并完善项目方案及技术文本、消落带图纸绘制）..."
+            class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:border-indigo-500 outline-none text-xs bg-white"></textarea>
+        </div>
+
         <!-- Primary Owner & Collaborators -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-indigo-50/40 p-3.5 rounded-xl border border-indigo-100">
           <div>
@@ -543,15 +552,6 @@
           <!-- Per-day Hours & Completion Breakdown (auto-shown for multi-day tasks) -->
           <div id="modalDailyHoursBox" class="hidden sm:col-span-2 pt-2.5 border-t border-slate-200/80 space-y-2">
           </div>
-        </div>
-
-        <!-- Note / Daily Report Content -->
-        <div>
-          <label class="block text-xs font-bold text-slate-800 mb-1">
-            报工内容 <span class="text-[11px] font-normal text-indigo-600">（用于直接生成当日 ERP 日报）</span>
-          </label>
-          <textarea id="taskNoteInput" rows="2" placeholder="填写具体工作内容（如：整理并完善项目方案及技术文本），生成当日日报时将自动填入“报工内容”列..."
-            class="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:border-indigo-500 outline-none text-xs"></textarea>
         </div>
 
         <!-- Actions (2-Step Safe Delete Button) -->
@@ -2395,12 +2395,15 @@
 
       const collabCount = Array.isArray(task.collaborators) ? task.collaborators.length : 0;
 
+      const displayWorkText = (task.note && task.note.trim()) ? task.note.trim() : task.title;
+      const workTooltip = (task.note && task.note.trim()) ? `${task.title}｜${task.note.trim()}` : task.title;
+
       return `
         <div onclick="openTaskModal('${task.id}', event)"
              class="task-pill-card px-1.5 py-1 rounded-lg border text-xs transition hover:shadow-xs overflow-hidden ${cardStyle}">
           ${projectBadge}
-          <div class="flex items-center justify-between gap-1" title="${escapeHtml(task.title)}">
-            <span class="font-medium text-[11px] leading-tight truncate ${isDone ? 'line-through decoration-emerald-500/60 text-slate-500' : ''}">${escapeHtml(task.title)}</span>
+          <div class="flex items-center justify-between gap-1" title="${escapeHtml(workTooltip)}">
+            <span class="font-medium text-[11px] leading-tight truncate ${isDone ? 'line-through decoration-emerald-500/60 text-slate-500' : ''}">${escapeHtml(displayWorkText)}</span>
             ${statusIcon}
           </div>
 
@@ -2573,13 +2576,13 @@
             <div>
               ${task.project ? `<span title="${escapeHtml((task.projectCode || getProjectCode(task.project)) ? `[${task.projectCode || getProjectCode(task.project)}] ${task.project}` : task.project)}" class="inline-block text-[11px] px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100 font-semibold mb-1 max-w-full truncate">📁 ${escapeHtml((task.projectCode || getProjectCode(task.project)) ? `[${task.projectCode || getProjectCode(task.project)}] ${task.project}` : task.project)}</span>` : ''}
               <h4 onclick="openTaskModal('${task.id}', event)" class="font-bold ${isDone ? 'line-through text-slate-500' : 'text-slate-800'} text-xs sm:text-sm hover:text-indigo-600 cursor-pointer leading-snug">
-                ${escapeHtml(task.title)}
+                ${escapeHtml((task.note && task.note.trim()) ? task.note.trim() : task.title)}
               </h4>
             </div>
             ${hoursControlHtml}
           </div>
 
-          ${task.note ? `<p class="text-xs text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-100">${escapeHtml(task.note)}</p>` : ''}
+          ${task.note ? `<p class="text-[11px] text-slate-500 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">ERP任务: ${escapeHtml(task.title)}</p>` : ''}
 
           <div class="pt-2 border-t border-slate-100 space-y-1.5 text-xs">
             <div class="flex items-center justify-between gap-2">
@@ -2732,21 +2735,33 @@
     function handleTaskProjectChange(projectName) {
       updateTaskProjectCodeHint(projectName);
       const erp = getErpProjectByName(projectName);
-      if (erp && erp.taskName) {
-        populateWorkContentSelect(erp.taskName);
-      }
+      populateWorkContentSelect((erp && erp.taskName) || '', projectName);
     }
 
-    function populateWorkContentSelect(selectedTitle = '') {
+    function populateWorkContentSelect(selectedTitle = '', projectName = '') {
       const sel = document.getElementById('taskTitleSelect');
-      if (selectedTitle && !state.workContentOptions.includes(selectedTitle)) {
-        state.workContentOptions.unshift(selectedTitle);
+      const targetProj = projectName || document.getElementById('taskProjectSelect')?.value || '';
+      const erp = getErpProjectByName(targetProj);
+
+      let options = [];
+      if (erp && erp.taskName) {
+        options.push(erp.taskName);
+        if (selectedTitle && selectedTitle !== erp.taskName) {
+          options.push(selectedTitle);
+        }
+      } else {
+        options = [...state.workContentOptions];
+        if (selectedTitle && !options.includes(selectedTitle)) {
+          options.unshift(selectedTitle);
+        }
+        if (options.length === 0) {
+          options.push('开展项目设计');
+        }
       }
-      if (state.workContentOptions.length === 0) {
-        state.workContentOptions.push('开展项目设计');
-      }
-      sel.innerHTML = state.workContentOptions.map(w =>
-        `<option value="${escapeHtml(w)}" ${w === selectedTitle ? 'selected' : ''}>${escapeHtml(w)}</option>`
+
+      const finalSelected = selectedTitle && options.includes(selectedTitle) ? selectedTitle : options[0];
+      sel.innerHTML = options.map(w =>
+        `<option value="${escapeHtml(w)}" ${w === finalSelected ? 'selected' : ''}>${escapeHtml(w)}</option>`
       ).join('');
     }
 
@@ -2877,7 +2892,7 @@
         document.getElementById('taskModalTitle').innerHTML = `<i class="fa-solid fa-pen-to-square text-indigo-600"></i><span>修改任务排期</span>`;
         document.getElementById('taskIdInput').value = task.id;
         populateProjectSelect(task.project || state.projectOptions[0]);
-        populateWorkContentSelect(task.title || state.workContentOptions[0]);
+        populateWorkContentSelect(task.title || state.workContentOptions[0], task.project || state.projectOptions[0]);
         document.getElementById('taskAssigneeInput').value = task.memberId;
         currentEditingCollaborators = Array.isArray(task.collaborators) ? [...task.collaborators] : [];
         currentEditingDailyHours = (task.dailyHours && typeof task.dailyHours === 'object') ? { ...task.dailyHours } : {};
@@ -2903,7 +2918,7 @@
         const defaultProj = state.projectOptions[0] || '';
         populateProjectSelect(defaultProj);
         const defaultErp = getErpProjectByName(defaultProj);
-        populateWorkContentSelect((defaultErp && defaultErp.taskName) || state.workContentOptions[0] || '');
+        populateWorkContentSelect((defaultErp && defaultErp.taskName) || state.workContentOptions[0] || '', defaultProj);
         document.getElementById('taskAssigneeInput').value = targetMember;
         currentEditingCollaborators = [];
         currentEditingDailyHours = {};

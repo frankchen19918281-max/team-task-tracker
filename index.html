@@ -13,6 +13,7 @@
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
       background-color: #f8fafc;
+      overflow-x: hidden;
     }
     ::-webkit-scrollbar {
       width: 6px;
@@ -100,59 +101,59 @@
 
   <!-- Top Navigation Bar -->
   <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
-    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 min-h-14 py-2 flex flex-wrap items-center justify-between gap-2">
       <!-- Left: Brand & Identity Switcher -->
-      <div class="flex items-center gap-3">
-        <div class="flex items-center gap-2.5">
-          <div class="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-sm shadow-indigo-200">
-            <i class="fa-solid fa-calendar-check text-lg"></i>
+      <div class="flex items-center gap-2.5 min-w-0 shrink-0">
+        <div class="flex items-center gap-2 min-w-0">
+          <div class="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-sm shadow-indigo-200 shrink-0">
+            <i class="fa-solid fa-calendar-check text-base"></i>
           </div>
-          <div>
-            <h1 class="font-bold text-slate-900 text-base leading-tight flex items-center gap-2">
-              团队排期与负荷看板
-              <span class="text-xs font-normal px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200 flex items-center gap-1">
+          <div class="min-w-0">
+            <h1 class="font-bold text-slate-900 text-sm sm:text-base leading-tight flex items-center gap-1.5 whitespace-nowrap">
+              <span>团队排期与负荷看板</span>
+              <span class="hidden 2xl:inline-flex text-[11px] font-normal px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200 items-center gap-1">
                 <i class="fa-solid fa-shield-halved text-[10px]"></i> 防误删保护中
               </span>
             </h1>
-            <p class="text-xs text-slate-400 hidden sm:block">实时掌握负责人与项目成员的时间安排及任务量</p>
+            <p class="text-[11px] text-slate-400 hidden 2xl:block truncate">实时掌握负责人与项目成员的时间安排及任务量</p>
           </div>
         </div>
 
-        <div class="h-6 w-px bg-slate-200 hidden xl:block mx-1"></div>
+        <div class="h-5 w-px bg-slate-200 hidden xl:block mx-0.5"></div>
 
         <!-- Current Operating User -->
-        <div class="hidden xl:flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200/80">
+        <div class="hidden xl:flex items-center gap-1.5 bg-slate-100 px-2.5 py-1.5 rounded-lg border border-slate-200/80 whitespace-nowrap">
           <span class="text-xs text-slate-500">当前视角:</span>
-          <select id="currentActorSelect" onchange="handleActorChange(this.value)" class="bg-transparent text-xs font-semibold text-slate-800 focus:outline-none cursor-pointer">
+          <select id="currentActorSelect" onchange="handleActorChange(this.value)" class="bg-transparent text-xs font-semibold text-slate-800 focus:outline-none cursor-pointer max-w-[120px] truncate">
             <!-- Populated by JS -->
           </select>
         </div>
       </div>
 
       <!-- Center: View Switcher -->
-      <div class="flex bg-slate-100 p-1 rounded-xl border border-slate-200/70">
-        <button id="tabMatrix" onclick="switchView('matrix')" class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 bg-white text-indigo-600 shadow-sm cursor-pointer">
+      <div class="flex bg-slate-100 p-1 rounded-xl border border-slate-200/70 shrink-0 whitespace-nowrap">
+        <button id="tabMatrix" onclick="switchView('matrix')" class="px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 bg-white text-indigo-600 shadow-sm cursor-pointer whitespace-nowrap">
           <i class="fa-solid fa-table-cells"></i>
           <span>团队时间轴</span>
         </button>
-        <button id="tabPersonal" onclick="switchView('personal')" class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 text-slate-600 hover:text-slate-900 cursor-pointer">
+        <button id="tabPersonal" onclick="switchView('personal')" class="px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 text-slate-600 hover:text-slate-900 cursor-pointer whitespace-nowrap">
           <i class="fa-solid fa-list-check"></i>
           <span>个人清单</span>
         </button>
       </div>
 
       <!-- Right: Quick Actions + Cloud Sync + Export Image + Trash Bin + Safe Lock -->
-      <div class="flex items-center gap-2">
+      <div class="flex flex-wrap items-center gap-1.5">
         <!-- One-Click GitHub Sync Button + Cloud Config Gear -->
-        <div class="inline-flex items-center rounded-xl shadow-xs">
+        <div class="inline-flex items-center rounded-xl shadow-xs shrink-0 whitespace-nowrap">
           <button id="cloudSyncStatusBtn" onclick="handleOneClickGitHubSync()"
-            class="px-3 py-2 rounded-l-xl border border-slate-800 bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition cursor-pointer"
+            class="px-2.5 py-1.5 rounded-l-xl border border-slate-800 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap"
             title="点击立即将当前排期一键同步更新到 GitHub">
             <i class="fa-brands fa-github text-sm"></i>
             <span>一键更新GitHub</span>
           </button>
           <button onclick="openCloudSyncModal()"
-            class="px-2 py-2 rounded-r-xl border border-l-0 border-slate-300 bg-white hover:bg-slate-100 text-slate-600 text-xs sm:text-sm transition cursor-pointer"
+            class="px-2 py-1.5 rounded-r-xl border border-l-0 border-slate-300 bg-white hover:bg-slate-100 text-slate-600 text-xs transition cursor-pointer"
             title="GitHub 云同步设置 / 从云端拉取 / 复制团队免配链接">
             <i class="fa-solid fa-gear"></i>
           </button>
@@ -160,7 +161,7 @@
 
         <!-- Daily Report Export Button -->
         <button id="dailyReportBtn" onclick="openDailyReportModal()"
-          class="px-3 py-2 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition shadow-xs cursor-pointer"
+          class="px-2.5 py-1.5 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-semibold flex items-center gap-1.5 transition shadow-xs cursor-pointer whitespace-nowrap shrink-0"
           title="根据当日排期一键生成并下载 ERP 日报模板 (.xls)">
           <i class="fa-solid fa-file-excel"></i>
           <span>生成当日日报</span>
@@ -168,42 +169,42 @@
 
         <!-- Export Image for Boss Button -->
         <button id="exportImgBtn" onclick="exportScheduleAsImage()"
-          class="px-3 py-2 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition shadow-xs cursor-pointer"
+          class="px-2.5 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold flex items-center gap-1.5 transition shadow-xs cursor-pointer whitespace-nowrap shrink-0"
           title="将当前完整的排期表与负荷情况生成高清长图，方便直接发微信向领导汇报">
           <i class="fa-solid fa-camera-retro"></i>
-          <span>生成汇报图片</span>
+          <span class="hidden sm:inline">生成汇报图片</span>
         </button>
 
         <!-- Safe Delete Lock Toggle -->
         <button id="safeLockBtn" onclick="toggleSafeLock()"
-          class="px-2.5 py-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+          class="px-2 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1 transition cursor-pointer whitespace-nowrap shrink-0"
           title="开启后将锁定删除操作，防止手滑误删">
         </button>
 
         <!-- Recycle Bin (回收站) -->
-        <button onclick="openTrashModal()" class="px-2.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium flex items-center gap-1.5 transition shadow-xs cursor-pointer" title="查看并恢复误删的任务或人员">
+        <button onclick="openTrashModal()" class="px-2 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium flex items-center gap-1 transition shadow-xs cursor-pointer whitespace-nowrap shrink-0" title="查看并恢复误删的任务或人员">
           <i class="fa-solid fa-trash-can-arrow-up text-slate-500"></i>
-          <span class="hidden md:inline">回收站</span>
-          <span id="trashCountBadge" class="px-1.5 py-0.2 bg-slate-100 text-slate-600 rounded-full text-xs font-semibold">0</span>
+          <span class="hidden xl:inline">回收站</span>
+          <span id="trashCountBadge" class="px-1.5 py-0.2 bg-slate-100 text-slate-600 rounded-full text-[11px] font-semibold">0</span>
         </button>
 
-        <button onclick="openDictModal()" class="px-2.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium flex items-center gap-1.5 transition shadow-xs cursor-pointer" title="预先录入常用的项目名称和工作内容">
+        <button onclick="openDictModal()" class="px-2 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium flex items-center gap-1 transition shadow-xs cursor-pointer whitespace-nowrap shrink-0" title="管理ERP项目库和常用报工内容模板">
           <i class="fa-solid fa-folder-plus text-indigo-600"></i>
-          <span class="hidden lg:inline">项目/内容库</span>
+          <span class="hidden xl:inline">项目/内容库</span>
         </button>
 
-        <button onclick="openMemberModal()" class="px-2.5 py-2 rounded-xl border border-indigo-200 bg-indigo-50/60 hover:bg-indigo-100/80 text-indigo-700 text-xs font-semibold flex items-center gap-1.5 transition shadow-xs cursor-pointer">
+        <button onclick="openMemberModal()" class="px-2 py-1.5 rounded-xl border border-indigo-200 bg-indigo-50/60 hover:bg-indigo-100/80 text-indigo-700 text-xs font-semibold flex items-center gap-1 transition shadow-xs cursor-pointer whitespace-nowrap shrink-0" title="修改负责人与项目成员名单">
           <i class="fa-solid fa-user-pen"></i>
-          <span class="hidden lg:inline">改负责人/成员</span>
-          <span id="memberCountBadge" class="px-1.5 py-0.2 bg-indigo-600 text-white rounded-full text-xs font-semibold">4</span>
+          <span class="hidden xl:inline">改成员</span>
+          <span id="memberCountBadge" class="px-1.5 py-0.2 bg-indigo-600 text-white rounded-full text-[11px] font-semibold">4</span>
         </button>
 
-        <button onclick="openTaskModal()" class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-medium flex items-center gap-1.5 transition shadow-sm shadow-indigo-200 cursor-pointer">
+        <button onclick="openTaskModal()" class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold flex items-center gap-1 transition shadow-sm shadow-indigo-200 cursor-pointer whitespace-nowrap shrink-0">
           <i class="fa-solid fa-plus"></i>
           <span>记任务</span>
         </button>
 
-        <button onclick="lockSystemNow()" class="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-500 text-xs transition cursor-pointer" title="立即锁定屏幕（需重新输入密码 2026）">
+        <button onclick="lockSystemNow()" class="p-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-500 text-xs transition cursor-pointer shrink-0" title="立即锁定屏幕（需重新输入密码 2026）">
           <i class="fa-solid fa-power-off"></i>
         </button>
       </div>
@@ -321,8 +322,8 @@
       </div>
 
       <!-- Scrollable Matrix Table -->
-      <div id="matrixScrollWrapper" class="overflow-x-auto">
-        <table id="matrixTableElement" class="w-full table-fixed border-collapse min-w-[880px]">
+      <div id="matrixScrollWrapper" class="overflow-x-auto w-full">
+        <table id="matrixTableElement" class="table-fixed border-collapse min-w-full">
           <thead>
             <tr id="matrixHeaderRow" class="bg-slate-50/60 border-b border-slate-200 text-left">
               <!-- Populated by JS -->
@@ -401,13 +402,13 @@
         </button>
       </div>
 
-      <form id="taskForm" onsubmit="saveTaskForm(event)" class="p-6 space-y-4 text-sm max-h-[82vh] overflow-y-auto">
+      <form id="taskForm" onsubmit="saveTaskForm(event)" class="p-6 space-y-4 text-sm max-h-[82vh] overflow-y-auto overflow-x-hidden">
         <input type="hidden" id="taskIdInput">
 
         <!-- 1. 项目名称 (ERP标准) -->
-        <div class="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/90 space-y-2">
-          <div class="flex items-center justify-between gap-2">
-            <label class="block text-xs font-bold text-slate-800">
+        <div class="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/90 space-y-2 min-w-0 overflow-hidden">
+          <div class="flex items-center justify-between gap-2 min-w-0">
+            <label class="block text-xs font-bold text-slate-800 truncate">
               1. 项目名称 (ERP) <span class="text-rose-500">*</span>
               <span id="taskProjectCodeHint" class="ml-1.5 px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-mono text-[10px] font-semibold"></span>
             </label>
@@ -416,7 +417,7 @@
             </button>
           </div>
 
-          <select id="taskProjectSelect" required onchange="handleTaskProjectChange(this.value)" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:border-indigo-500 outline-none bg-white font-medium text-slate-800 cursor-pointer text-xs">
+          <select id="taskProjectSelect" required onchange="handleTaskProjectChange(this.value)" class="w-full max-w-full truncate px-3 py-2 rounded-xl border border-slate-300 focus:border-indigo-500 outline-none bg-white font-medium text-slate-800 cursor-pointer text-xs">
           </select>
 
           <div id="quickAddProjectBox" class="hidden pt-2 border-t border-slate-200/80 space-y-2">
@@ -2114,10 +2115,10 @@
     function renderSafeLockAndTrashButton() {
       const btn = document.getElementById('safeLockBtn');
       if (state.safeLock) {
-        btn.className = 'px-2.5 py-2 rounded-xl border border-amber-300 bg-amber-50 text-amber-800 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer';
+        btn.className = 'px-2 py-1.5 rounded-xl border border-amber-300 bg-amber-50 text-amber-800 text-xs font-semibold flex items-center gap-1 transition cursor-pointer whitespace-nowrap shrink-0';
         btn.innerHTML = `<i class="fa-solid fa-lock text-amber-600"></i><span class="hidden xl:inline">已锁删除</span>`;
       } else {
-        btn.className = 'px-2.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-xs font-medium flex items-center gap-1.5 transition cursor-pointer';
+        btn.className = 'px-2 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-xs font-medium flex items-center gap-1 transition cursor-pointer whitespace-nowrap shrink-0';
         btn.innerHTML = `<i class="fa-solid fa-lock-open text-slate-400"></i><span class="hidden xl:inline">防删锁:关</span>`;
       }
 
@@ -2235,9 +2236,14 @@
           `${dates[0].monthDay} - ${dates[dates.length - 1].monthDay}`;
       }
 
+      const tableEl = document.getElementById('matrixTableElement');
+      if (tableEl) {
+        tableEl.style.width = `${176 + dates.length * 148}px`;
+      }
+
       const headerRow = document.getElementById('matrixHeaderRow');
       let headerHtml = `
-        <th class="sticky left-0 z-20 bg-slate-50 px-3 py-2.5 w-44 min-w-[176px] border-r border-slate-200 shadow-[1px_0_0_0_#e2e8f0]">
+        <th class="sticky left-0 z-20 bg-slate-50 px-3 py-2.5 w-44 min-w-[176px] max-w-[176px] border-r border-slate-200 shadow-[1px_0_0_0_#e2e8f0]">
           <div class="flex items-center justify-between">
             <span class="text-xs font-bold text-slate-700">负责人 / 项目成员</span>
             <button onclick="openMemberModal()" class="no-export text-[11px] text-indigo-600 hover:underline font-medium cursor-pointer">
@@ -2254,7 +2260,7 @@
           : (d.isWeekend ? 'bg-slate-100/70 text-slate-500' : 'text-slate-700');
 
         headerHtml += `
-          <th class="px-1.5 py-2 w-[142px] min-w-[142px] max-w-[142px] border-r border-slate-200/80 text-center ${todayHighlight}">
+          <th class="px-1.5 py-2 w-[148px] min-w-[148px] max-w-[148px] border-r border-slate-200/80 text-center ${todayHighlight}">
             <div class="flex items-center justify-center gap-1 text-xs font-bold">
               <span>${d.monthDay}</span>
               <span class="text-[11px] font-normal ${d.isToday ? 'bg-indigo-600 text-white px-1.5 py-0.2 rounded-full' : 'text-slate-400'}">
@@ -2298,7 +2304,7 @@
         // Left Sticky Member Info Column
         bodyHtml += `
           <td onclick="openMemberModal()" title="点击直接修改【${escapeHtml(member.name)}】的姓名、角色或增减成员"
-              class="sticky left-0 z-10 bg-white group-hover:bg-slate-50/90 px-4 py-3.5 border-r border-slate-200 align-top shadow-[1px_0_0_0_#e2e8f0] cursor-pointer member-card-hover">
+              class="sticky left-0 z-10 bg-white group-hover:bg-slate-50/90 px-3 py-2.5 w-44 min-w-[176px] max-w-[176px] overflow-hidden border-r border-slate-200 align-top shadow-[1px_0_0_0_#e2e8f0] cursor-pointer member-card-hover">
             <div class="flex items-start gap-2.5">
               <div class="w-8 h-8 rounded-xl ${avatarClass} flex items-center justify-center font-bold text-xs shrink-0 mt-0.5 shadow-xs">
                 ${escapeHtml(member.name.slice(0, 1))}
@@ -2336,7 +2342,7 @@
 
           bodyHtml += `
             <td onclick="handleCellClick('${member.id}', '${d.dateStr}', event)"
-                class="p-1 w-[142px] min-w-[142px] max-w-[142px] border-r border-slate-200/70 align-top cursor-pointer hover:bg-indigo-50/30 transition relative cell-hover ${weekendBg} ${todayBorder}">
+                class="p-1.5 w-[148px] min-w-[148px] max-w-[148px] overflow-hidden border-r border-slate-200/70 align-top cursor-pointer hover:bg-indigo-50/30 transition relative cell-hover ${weekendBg} ${todayBorder}">
               
               <!-- Cell Header: Load Progress Bar & Total Hours (unchanged when tasks marked done) -->
               <div class="flex items-center justify-between gap-1 mb-1" title="${cellHoursTooltip}">
@@ -2426,12 +2432,12 @@
             ${statusIcon}
           </div>
 
-          <div class="flex items-center justify-between gap-1 mt-1 pt-0.5 border-t border-slate-100/80 text-[10px] leading-tight" onclick="event.stopPropagation()">
-            <div class="flex items-center gap-1 min-w-0">
+          <div class="flex items-center justify-between gap-1 mt-1 pt-0.5 border-t border-slate-100/80 text-[10px] leading-tight min-w-0 overflow-hidden" onclick="event.stopPropagation()">
+            <div class="flex items-center gap-1 min-w-0 flex-1 overflow-hidden">
               ${roleHintBadge}
               <select onchange="quickChangeTaskOwner('${task.id}', this.value, event)"
                       title="直接点击切换该任务的负责人"
-                      class="bg-transparent text-[10px] text-slate-600 hover:text-indigo-600 font-medium focus:outline-none cursor-pointer truncate max-w-[82px]">
+                      class="bg-transparent text-[10px] text-slate-600 hover:text-indigo-600 font-medium focus:outline-none cursor-pointer truncate flex-1 min-w-0">
                 ${ownerOptions}
               </select>
               ${collabCount > 0 ? `<span class="text-[10px] text-purple-600 font-medium shrink-0" title="还有${collabCount}位项目成员共同参与">+${collabCount}人</span>` : ''}
@@ -2439,7 +2445,7 @@
           </div>
 
           <!-- Inline Day Completion Option + Inline Day Hours Control -->
-          <div class="flex items-center justify-between gap-1 mt-1 pt-1 border-t border-slate-100/80 text-[10px]" onclick="event.stopPropagation()">
+          <div class="flex items-center justify-between gap-1 mt-1 pt-1 border-t border-slate-100/80 text-[10px] min-w-0 overflow-hidden" onclick="event.stopPropagation()">
             <button type="button"
               onclick="toggleTaskDayDone('${task.id}', '${dateStr}', event)"
               title="${isDone ? '已完成（点击取消完成状态，总时长不变）' : '点击标记已完成（当日总时长保持不变）'}"
@@ -2533,7 +2539,7 @@
       board.innerHTML = columns.map(col => {
         const colTasks = filteredTasks.filter(t => t.status === col.key);
         return `
-          <div class="bg-white rounded-2xl border ${col.border} shadow-xs flex flex-col h-full min-h-[420px]">
+          <div class="bg-white rounded-2xl border ${col.border} shadow-xs flex flex-col h-full min-h-[420px] min-w-0 overflow-hidden">
             <div class="px-4 py-3 ${col.headerBg} rounded-t-2xl font-bold text-xs flex items-center justify-between">
               <span>${col.title}</span>
               <span class="px-2 py-0.5 bg-white/80 rounded-full text-xs">${colTasks.length}</span>
@@ -2590,36 +2596,36 @@
         `;
 
       return `
-        <div class="p-3.5 rounded-xl border ${isDone ? 'border-emerald-200 bg-emerald-50/20' : 'border-slate-200 bg-white'} hover:border-indigo-300 shadow-2xs transition space-y-2">
-          <div class="flex items-start justify-between gap-2">
-            <div>
-              ${task.project ? `<span title="${escapeHtml((task.projectCode || getProjectCode(task.project)) ? `[${task.projectCode || getProjectCode(task.project)}] ${task.project}` : task.project)}" class="inline-block text-[11px] px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100 font-semibold mb-1 max-w-full truncate">📁 ${escapeHtml((task.projectCode || getProjectCode(task.project)) ? `[${task.projectCode || getProjectCode(task.project)}] ${task.project}` : task.project)}</span>` : ''}
-              <h4 onclick="openTaskModal('${task.id}', event)" class="font-bold ${isDone ? 'line-through text-slate-500' : 'text-slate-800'} text-xs sm:text-sm hover:text-indigo-600 cursor-pointer leading-snug">
+        <div class="p-3.5 rounded-xl border ${isDone ? 'border-emerald-200 bg-emerald-50/20' : 'border-slate-200 bg-white'} hover:border-indigo-300 shadow-2xs transition space-y-2 min-w-0 overflow-hidden">
+          <div class="flex items-start justify-between gap-2 min-w-0">
+            <div class="min-w-0 flex-1">
+              ${task.project ? `<span title="${escapeHtml((task.projectCode || getProjectCode(task.project)) ? `[${task.projectCode || getProjectCode(task.project)}] ${task.project}` : task.project)}" class="block w-full text-[11px] px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100 font-semibold mb-1 truncate">📁 ${escapeHtml((task.projectCode || getProjectCode(task.project)) ? `[${task.projectCode || getProjectCode(task.project)}] ${task.project}` : task.project)}</span>` : ''}
+              <h4 onclick="openTaskModal('${task.id}', event)" class="font-bold ${isDone ? 'line-through text-slate-500' : 'text-slate-800'} text-xs sm:text-sm hover:text-indigo-600 cursor-pointer leading-snug break-words">
                 ${escapeHtml((task.note && task.note.trim()) ? task.note.trim() : task.title)}
               </h4>
             </div>
             ${hoursControlHtml}
           </div>
 
-          ${task.note ? `<p class="text-[11px] text-slate-500 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">ERP任务: ${escapeHtml(task.title)}</p>` : ''}
+          ${task.note ? `<p class="text-[11px] text-slate-500 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100 break-words">ERP任务: ${escapeHtml(task.title)}</p>` : ''}
 
-          <div class="pt-2 border-t border-slate-100 space-y-1.5 text-xs">
-            <div class="flex items-center justify-between gap-2">
+          <div class="pt-2 border-t border-slate-100 space-y-1.5 text-xs min-w-0">
+            <div class="flex flex-wrap items-center justify-between gap-1.5 min-w-0">
               <select onchange="quickChangeTaskOwner('${task.id}', this.value, event)"
-                      class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-semibold text-slate-700 hover:border-indigo-400 focus:outline-none cursor-pointer">
+                      class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-semibold text-slate-700 hover:border-indigo-400 focus:outline-none cursor-pointer max-w-[140px] truncate">
                 ${ownerOptions}
               </select>
-              <span class="text-[11px] text-slate-400">
+              <span class="text-[11px] text-slate-400 whitespace-nowrap">
                 📅 ${task.startDate.slice(5)} ~ ${task.endDate.slice(5)}
                 ${!isSingleDay && doneDaysCount > 0 ? `<b class="text-emerald-600 ml-1">(已完成${doneDaysCount}/${allDates.length}天)</b>` : ''}
               </span>
             </div>
 
-            <div class="flex items-center justify-between text-[11px] text-slate-500">
-              <span>
+            <div class="flex items-center justify-between gap-2 text-[11px] text-slate-500 min-w-0">
+              <span class="truncate min-w-0">
                 👥 项目成员: ${collabNames.length > 0 ? `<b class="text-slate-700">${escapeHtml(collabNames.join('、'))}</b>` : '无协作成员'}
               </span>
-              <button onclick="openTaskModal('${task.id}', event)" class="no-export text-indigo-600 hover:underline cursor-pointer">
+              <button onclick="openTaskModal('${task.id}', event)" class="no-export text-indigo-600 hover:underline cursor-pointer shrink-0">
                 +改排期/成员
               </button>
             </div>
@@ -2680,14 +2686,14 @@
         viewMatrix.classList.remove('hidden');
         viewPersonal.classList.add('hidden');
         viewPersonal.classList.remove('flex');
-        tabMatrix.className = 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 bg-white text-indigo-600 shadow-sm cursor-pointer';
-        tabPersonal.className = 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 text-slate-600 hover:text-slate-900 cursor-pointer';
+        tabMatrix.className = 'px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 bg-white text-indigo-600 shadow-sm cursor-pointer whitespace-nowrap';
+        tabPersonal.className = 'px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 text-slate-600 hover:text-slate-900 cursor-pointer whitespace-nowrap';
       } else {
         viewMatrix.classList.add('hidden');
         viewPersonal.classList.remove('hidden');
         viewPersonal.classList.add('flex');
-        tabPersonal.className = 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 bg-white text-indigo-600 shadow-sm cursor-pointer';
-        tabMatrix.className = 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 text-slate-600 hover:text-slate-900 cursor-pointer';
+        tabPersonal.className = 'px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 bg-white text-indigo-600 shadow-sm cursor-pointer whitespace-nowrap';
+        tabMatrix.className = 'px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 text-slate-600 hover:text-slate-900 cursor-pointer whitespace-nowrap';
       }
       renderAll();
     }

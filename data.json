@@ -276,7 +276,10 @@
       "status": "todo",
       "priority": "normal",
       "note": "",
-      "projectCode": "XM20260928250"
+      "projectCode": "XM20260928250",
+      "dailyHours": {
+        "2026-11-19": 4
+      }
     },
     {
       "id": "t_1794540845194",

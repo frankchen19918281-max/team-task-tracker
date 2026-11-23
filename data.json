@@ -533,6 +533,21 @@
       "status": "todo",
       "priority": "normal",
       "note": "cad图纸绘制"
+    },
+    {
+      "id": "t_1795403626008",
+      "project": "Y江下游水电开发对雅尼湿地生态影响及保护规划研究",
+      "projectCode": "HX-2022-12-008",
+      "title": "成果文本编制及修改",
+      "memberId": "m1",
+      "collaborators": [],
+      "source": "self",
+      "startDate": "2026-11-23",
+      "endDate": "2026-11-24",
+      "hoursPerDay": 4,
+      "status": "doing",
+      "priority": "normal",
+      "note": "cad图纸绘制"
     }
   ],
   "erpProjects": [

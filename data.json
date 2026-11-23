@@ -563,6 +563,21 @@
       "status": "todo",
       "priority": "normal",
       "note": "项目变更材料"
+    },
+    {
+      "id": "t_1795403700407",
+      "project": "包头市三北工程退化湿地修复设计项目",
+      "projectCode": "XM20251201156",
+      "title": "开展项目设计",
+      "memberId": "m1",
+      "collaborators": [],
+      "source": "self",
+      "startDate": "2026-11-23",
+      "endDate": "2026-11-23",
+      "hoursPerDay": 2,
+      "status": "todo",
+      "priority": "normal",
+      "note": "赛汗塔拉项目；项目变更材料"
     }
   ],
   "erpProjects": [

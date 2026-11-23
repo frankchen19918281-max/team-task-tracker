@@ -548,6 +548,21 @@
       "status": "doing",
       "priority": "normal",
       "note": "cad图纸绘制"
+    },
+    {
+      "id": "t_1795403649782",
+      "project": "A景区一体化提升之尚湖景区重点区域生态景观系统提升工程",
+      "projectCode": "XM20260713222",
+      "title": "项目施工",
+      "memberId": "m1",
+      "collaborators": [],
+      "source": "self",
+      "startDate": "2026-11-23",
+      "endDate": "2026-11-23",
+      "hoursPerDay": 2,
+      "status": "todo",
+      "priority": "normal",
+      "note": "项目变更材料"
     }
   ],
   "erpProjects": [
